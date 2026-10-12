@@ -15,7 +15,7 @@ Die Darts-App für Buschi’s Ballerbude: kamerabasierte Dart-Erkennung (Autodar
 
 Sprachausgabe: **Piper** (natürliche Offline-Stimmen, Linux + Windows). Häufige Ansagen (Felder, Punkte, Namen, Restwerte) werden im Hintergrund vorberechnet, damit es im Spiel sofort spricht. Fallback: Systemstimme des Browsers.
 
-Avatare: **DiceBear „Notionists“** – einmal von api.dicebear.com geladen, danach lokal in `data/avatars/`. Ohne Netz bleibt die Silhouette.
+Avatare: **DiceBear HTTP-API** (`api.dicebear.com/9.x/<stil>/svg`), 20 Stile, Hintergrund- und Akzentfarbe nur aus der CI-Palette. Der Server lädt jedes Bild einmal und speichert es in `data/avatars/`. Ohne Netz bleibt die Silhouette.
 
 ## Linux
 

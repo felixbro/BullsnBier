@@ -54,12 +54,16 @@ function subDisplay() {
     chk('game.auto_next_sim', 'Simulator: nach 3 Darts startet der nächste Klick direkt die nächste Aufnahme') +
     '<div class="field"><span>Fassung</span><div class="seg" id="theme"><button data-v="light">Hell</button><button data-v="night">Nacht</button></div></div>' +
     '<div class="field"><span>Gastgeber · Begrüßung und Avatar oben rechts</span><div class="pick" id="hostPick">' + PLAYERS.map(function (p) {
-      return '<button type="button" class="pchip' + (hostPlayer() && hostPlayer().id === p.id ? ' on' : '') + '" data-id="' + p.id + '">' + avatar(p, 40) + esc(p.name) + '</button>'; }).join('') + '</div></div>' +
+      return '<button type="button" class="pchip' + (hostPlayer() && hostPlayer().id === p.id ? ' on' : '') + '" data-id="' + p.id + '" style="--pc:' + p.color + '">' + avatar(p, 40) + esc(p.name) + '</button>'; }).join('') + '</div></div>' +
+    '<label class="field"><span>Standard-Avatarstil · für Gäste und Spieler ohne eigenen Stil</span><select id="avDef"></select></label>' +
     '<div class="field"><span>Spielerfarben · Anzeige und WLED (Farbe wählst du je Spieler)</span><div class="palette">' + PALETTE.map(function (c, i) {
       return '<span><i style="--c:' + c + '"></i>Spieler ' + (i + 1) + '</span>'; }).join('') + '</div></div></div>' +
     '<div class="glass card"><div class="card-head"><h2 class="h">Animationen</h2>' + chk('display.animations', 'Animationen aktiv') + '</div><div class="checks">' + cols + '</div></div>';
   bindChecks($('#scontent'));
   segment($('#theme'), CFG.display.theme, function (v) { saveSettings({display: {theme: v}}); });
+  api('/api/avatar/styles').then(function (r) { var sel = $('#avDef'); if (!sel) return;
+    sel.innerHTML = r.styles.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === CFG.display.avatar_style ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('');
+    sel.onchange = function () { saveSettings({display: {avatar_style: sel.value}}); }; });
   $$('#hostPick .pchip').forEach(function (b) { b.onclick = function () { saveSettings({display: {host: +b.dataset.id}}); subDisplay(); }; });
   $$('[data-pv]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); setPreview(b.dataset.pv, true);
     $$('[data-pv]').forEach(function (x) { x.classList.toggle('on', x === b); }); }; });

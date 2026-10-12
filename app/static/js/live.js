@@ -207,6 +207,7 @@ function pickSel(ti, i) {
 function renderManual() {
   var box = $('#manual'); $('#btnFix').classList.toggle('on', fixMode);
   box.classList.toggle('hidden', !fixMode);
+  box.parentNode.classList.toggle('fixing', !!(fixMode && ST && ST.game));   // Board schrumpft, Panel liegt darunter statt darüber
   if (!fixMode || !ST || !ST.game) { if (!ST || !ST.game) box.classList.add('hidden'); return; }
   var s = ST.game.state, turns = [];
   if (s.turn.darts.length) turns.push(['Aktuell', s.turn.ti, s.turn.darts]);

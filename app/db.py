@@ -24,12 +24,14 @@ def _add_cols(table, cols):
     con.commit()
 
 
-_add_cols("players", [("spoken", "TEXT"), ("nick", "TEXT"), ("color", "TEXT"), ("hand", "TEXT"), ("seed", "TEXT")])
+_add_cols("players", [("spoken", "TEXT"), ("nick", "TEXT"), ("color", "TEXT"), ("hand", "TEXT"), ("seed", "TEXT"),
+                      ("av_style", "TEXT"), ("av_bg", "TEXT"), ("av_accent", "TEXT")])
 _add_cols("stats", [("legs_won", "INTEGER"), ("legs", "INTEGER"), ("best_leg", "INTEGER"),
                     ("best_co_way", "TEXT"), ("name", "TEXT")])
 
 PALETTE = ["#6FA8FF", "#FF7A6B", "#5FCB92", "#FFD66B", "#B79CFF", "#FFB27A", "#7FDDEB", "#FF8FC2"]
-FIELDS = "id,name,COALESCE(spoken,'') spoken,COALESCE(nick,'') nick,color,COALESCE(hand,'R') hand,COALESCE(seed,name) seed"
+FIELDS = "id,name,COALESCE(spoken,'') spoken,COALESCE(nick,'') nick,color,COALESCE(hand,'R') hand,COALESCE(seed,name) seed,\
+COALESCE(av_style,'') av_style,COALESCE(av_bg,'player') av_bg,COALESCE(av_accent,'ci') av_accent"
 
 
 def players():
@@ -52,6 +54,26 @@ def free_color(taken=()):
     return random.choice([c for c in PALETTE if used[c] == low])
 
 
+AV_BG = ["player", "none", "#DDF96A", "#F3FFAC", "#FF6B5E", "#3DBB7A", "#7FDDEB", "#2AAFC4", "#FFD66B", "#BDC8CB", "#202020"]
+
+
+def av_style(v):
+    from .avatars import STYLES
+    return v if v in STYLES else ""      # "" = Standardstil aus den Einstellungen
+
+
+def av_bg(v):
+    v = (v or "player").strip()
+    v = v.upper() if v.startswith("#") else v
+    return v if v in AV_BG else "player"
+
+
+def av_accent(v):
+    from .avatars import CI
+    v = (v or "ci").lstrip("#").upper()
+    return "#" + v if v in CI else "ci"
+
+
 def ci_color(c):
     c = (c or "").strip().upper()
     return c if c in PALETTE else None
@@ -61,9 +83,11 @@ def add_player(data):
     name = (data.get("name") or "").strip()
     if not name:
         raise ValueError("Name fehlt")
-    cur = con.execute("INSERT OR IGNORE INTO players(name,created,spoken,nick,color,hand,seed) VALUES(?,?,?,?,?,?,?)",
+    cur = con.execute("INSERT OR IGNORE INTO players(name,created,spoken,nick,color,hand,seed,av_style,av_bg,av_accent)"
+                      " VALUES(?,?,?,?,?,?,?,?,?,?)",
                       (name, time.time(), (data.get("spoken") or "").strip(), (data.get("nick") or "").strip(),
-                       ci_color(data.get("color")) or free_color(), data.get("hand") or "R", (data.get("seed") or name).strip()))
+                       ci_color(data.get("color")) or free_color(), data.get("hand") or "R", (data.get("seed") or name).strip(),
+                       av_style(data.get("av_style")), av_bg(data.get("av_bg")), av_accent(data.get("av_accent"))))
     con.commit()
     if cur.rowcount == 0:
         raise ValueError("Name existiert schon")
@@ -71,7 +95,7 @@ def add_player(data):
 
 
 def update_player(pid, data):
-    for k in ("name", "spoken", "nick", "color", "hand", "seed"):
+    for k in ("name", "spoken", "nick", "color", "hand", "seed", "av_style", "av_bg", "av_accent"):
         if k in data and data[k] is not None:
             v = str(data[k]).strip()
             if k == "name" and not v:
@@ -80,6 +104,8 @@ def update_player(pid, data):
                 v = ci_color(v)
                 if not v:
                     continue
+            if k.startswith("av_"):
+                v = {"av_style": av_style, "av_bg": av_bg, "av_accent": av_accent}[k](v)
             con.execute(f"UPDATE players SET {k}=? WHERE id=?", (v, pid))
     con.commit()
     return player(pid)

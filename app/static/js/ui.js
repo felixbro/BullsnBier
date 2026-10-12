@@ -68,13 +68,20 @@ function segHTML(opts) { return opts.map(function (o) { return '<button type="bu
 /* Avatar: Silhouette auf Spielerfarbe + DiceBear-Bild darüber (§6.3) */
 var SIL = '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="26" r="11" fill="#202020" fill-opacity=".55"></circle>' +
   '<path d="M10 64c1.5-13 10.5-21 22-21s20.5 8 22 21z" fill="#202020" fill-opacity=".55"></path></svg>';
+function avatarURL(p) {
+  p = p || {};
+  var style = p.av_style || (CFG && CFG.display.avatar_style) || 'notionists';
+  return '/api/avatar?seed=' + encodeURIComponent(p.seed || p.name || '') + '&style=' + style + '&accent=' + encodeURIComponent(p.av_accent || 'ci');
+}
+/* Avatar: Grund = Spielerfarbe, CI-Farbe oder hell (av_bg), Motiv = DiceBear-SVG darüber */
 function avatar(p, size, ring, cls) {
   p = p || {};
-  var seed = p.seed || p.name || '';
-  var img = seed ? '<img src="/api/avatar?seed=' + encodeURIComponent(seed) + '" width="' + size + '" height="' + size + '" alt="" decoding="async" onerror="this.parentNode&&this.parentNode.removeChild(this)">' : '';
-  return '<span class="avatar' + (ring ? ' ring' : '') + (cls ? ' ' + cls : '') + '" style="--pc:' + (p.color || PALETTE[0]) + '; --av:' + size + 'px">' + SIL + img + '</span>';
+  var seed = p.seed || p.name || '', bg = p.av_bg || 'player';
+  var img = seed ? '<img src="' + avatarURL(p) + '" width="' + size + '" height="' + size + '" alt="" decoding="async" onerror="this.parentNode&&this.parentNode.removeChild(this)">' : '';
+  var bgs = bg === 'player' ? '' : bg === 'none' ? '; background:rgba(255,255,255,.85)' : '; background:var(--grad-avatar-light), ' + bg;
+  return '<span class="avatar' + (ring ? ' ring' : '') + (cls ? ' ' + cls : '') + '" style="--pc:' + (p.color || PALETTE[0]) + '; --av:' + size + 'px' + bgs + '">' + SIL + img + '</span>';
 }
-function preloadAvatars(ps) { (ps || []).forEach(function (p) { var i = new Image(); i.src = '/api/avatar?seed=' + encodeURIComponent(p.seed || p.name); }); }
+function preloadAvatars(ps) { (ps || []).forEach(function (p) { var i = new Image(); i.src = avatarURL(p); }); }
 
 /* Logo-Zeichen (§6.3) */
 function logo(s, dark) {

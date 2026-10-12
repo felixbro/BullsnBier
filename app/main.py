@@ -465,9 +465,14 @@ def api_upd_player(pid: int, body: dict):
     return db.update_player(pid, body)
 
 
+@app.get("/api/avatar/styles")
+def api_avatar_styles():
+    return {"styles": [[k, v[0], bool(v[1])] for k, v in avatars.STYLES.items()], "ci": avatars.CI}
+
+
 @app.get("/api/avatar")
-async def api_avatar(seed: str):
-    data = await asyncio.to_thread(avatars.get, seed)
+async def api_avatar(seed: str, style: str = avatars.DEFAULT_STYLE, accent: str = "ci"):
+    data = await asyncio.to_thread(avatars.get, seed, style, accent)
     if not data:
         raise HTTPException(404)
     return Response(data, media_type="image/svg+xml", headers={"Cache-Control": "max-age=31536000"})

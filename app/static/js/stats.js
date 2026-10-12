@@ -4,7 +4,7 @@ function loadStats() {
   if (!PLAYERS.length) { $('#kpis').innerHTML = '<p class="lead">Noch keine Spieler angelegt.</p>'; return; }
   if (!statPid || !PLAYERS.some(function (p) { return p.id === statPid; })) statPid = (hostPlayer() || PLAYERS[0]).id;
   $('#statPlayers').innerHTML = PLAYERS.map(function (p) {
-    return '<button type="button" class="pchip' + (p.id === statPid ? ' on' : '') + '" data-id="' + p.id + '">' + avatar(p, 40) + esc(p.name) + '</button>'; }).join('');
+    return '<button type="button" class="pchip' + (p.id === statPid ? ' on' : '') + '" data-id="' + p.id + '" style="--pc:' + p.color + '">' + avatar(p, 40) + esc(p.name) + '</button>'; }).join('');
   $$('#statPlayers .pchip').forEach(function (b) { b.onclick = function () { statPid = +b.dataset.id; loadStats(); }; });
   segment($('#period'), statPeriod, function (v) { statPeriod = v; LOCAL.period = v; saveLocal(); loadStats(); });
   var p = PLAYERS.filter(function (x) { return x.id === statPid; })[0];
