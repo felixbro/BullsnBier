@@ -20,7 +20,7 @@ Avatare: **DiceBear HTTP-API** (`api.dicebear.com/9.x/<stil>/svg`), 20 Stile, Hi
 ## Linux
 
 ```bash
-git clone https://github.com/felixbro/DartCam.git && cd DartCam
+git clone https://github.com/felixbro/BullsnBier.git && cd BullsnBier
 ./install.sh                 # venv, Stimmen, systemd-Dienst, Autodarts-Dienst aus
 nano config.env              # CAMERAS=… (python run.py --list-cameras)
 sudo systemctl restart dartcam
@@ -35,8 +35,8 @@ journalctl -u dartcam -f     # Log
 ## Windows
 
 ```bat
-git clone https://github.com/felixbro/DartCam.git
-cd DartCam
+git clone https://github.com/felixbro/BullsnBier.git
+cd BullsnBier
 install-windows.bat          :: venv + Stimmen + Kamera-Liste
 start-sim.bat                :: Simulator
 start.bat                    :: live mit Kameras (CAMERAS=0,1,2 in config.env)
@@ -50,7 +50,7 @@ Python von python.org mit Haken „Add to PATH“. Zugriff von Handy/Tablet: Win
 Für eine Demo über das Internet läuft nur der Simulator, Kameras gibt es im Container keine.
 
 ```bash
-git clone https://github.com/felixbro/DartCam.git && cd DartCam
+git clone https://github.com/felixbro/BullsnBier.git && cd BullsnBier
 ACCESS_KEY=meinschluessel docker compose up -d --build
 ```
 
