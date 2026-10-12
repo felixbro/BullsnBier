@@ -334,3 +334,5 @@ button.hstatus{cursor:pointer;}
 .fxrow input[type=number]::-webkit-inner-spin-button, .fxrow input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none; margin:0;}
 .fxrow select{min-width:0;}
 .fxrow .chk input{flex:none;}
+/* Silhouette nur, solange kein DiceBear-Bild da ist */
+.avatar.ok > svg{display:none;}

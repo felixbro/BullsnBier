@@ -77,7 +77,7 @@ function avatarURL(p) {
 function avatar(p, size, ring, cls) {
   p = p || {};
   var seed = p.seed || p.name || '', bg = p.av_bg || 'player';
-  var img = seed ? '<img src="' + avatarURL(p) + '" width="' + size + '" height="' + size + '" alt="" decoding="async" onerror="this.parentNode&&this.parentNode.removeChild(this)">' : '';
+  var img = seed ? '<img src="' + avatarURL(p) + '" width="' + size + '" height="' + size + '" alt="" decoding="async" onload="this.parentNode&&this.parentNode.classList.add(\'ok\')" onerror="this.parentNode&&this.parentNode.removeChild(this)">' : '';
   var bgs = bg === 'player' ? '' : bg === 'none' ? '; background:rgba(255,255,255,.85)' : '; background:var(--grad-avatar-light), ' + bg;
   return '<span class="avatar' + (ring ? ' ring' : '') + (cls ? ' ' + cls : '') + '" style="--pc:' + (p.color || PALETTE[0]) + '; --av:' + size + 'px' + bgs + '">' + SIL + img + '</span>';
 }
