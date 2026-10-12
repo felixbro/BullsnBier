@@ -23,7 +23,7 @@
    background-color bei Flaechenwechseln).
    ==================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&display=swap');
+/* Outfit liegt lokal unter /static/fonts (offline-tauglich, OFL-Lizenz) – siehe app.css */
 
 
 /* --------------------------------------------------------------------

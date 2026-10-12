@@ -1,3 +1,5 @@
+/* Outfit lokal (Variable Font 100–900, SIL Open Font License, fonts/OFL.txt) */
+@font-face{font-family:'Outfit'; src:url('/static/fonts/Outfit-Variable.ttf') format('truetype'); font-weight:100 900; font-style:normal; font-display:swap;}
 /* Bulls'n'Bier – App-Layout. Nur Tokens aus bnb.css (Styleguide v01), keine neuen Farben/Radien. */
 html,body{overflow:hidden;}
 body{background:var(--mist);}
