@@ -407,3 +407,7 @@ button.hstatus{cursor:pointer;}
 [data-theme="night"] .pcard.next .state{color:var(--aqua);}
 [data-theme="night"] .seg__thumb{background:rgba(255,255,255,.16);}
 [data-theme="night"] .board{--b-surround:#2A2D2D; --b-wire:#4A5355;}
+/* Nacht: Treffer-Punkt und Hover-Zahl auf dem Board lesbar */
+[data-theme="night"] #board .hit{stroke:#202020; stroke-width:2.2; filter:drop-shadow(0 0 2px rgba(0,0,0,.8));}
+[data-theme="night"] #board .hit.sel{stroke:#FFFFFF; stroke-width:3;}
+[data-theme="night"] #board .hover{fill:#FFFFFF; stroke:#121313; stroke-width:5px; font-weight:600;}
