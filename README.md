@@ -2,6 +2,27 @@
 
 Die Darts-App für Buschi’s Ballerbude: kamerabasierte Dart-Erkennung (Autodarts-Nachbau) – läuft unter **Linux und Windows**, jeweils live mit Kameras oder als **Simulator** zum Testen. Oberfläche nach Styleguide v01 (Bühne 1920 × 1080, skaliert auf jeden Bildschirm).
 
+![Live](docs/screenshots/live.jpg)
+
+| | |
+|---|---|
+| ![Start](docs/screenshots/start.jpg) | ![Neues Spiel](docs/screenshots/neues-spiel.jpg) |
+| **Start** – Begrüßung, Tageswertung, letzte Spiele | **Neues Spiel** – 10 Modi, Optionen, Spieler antippen |
+| ![Statistik](docs/screenshots/statistik.jpg) | ![Spieler](docs/screenshots/spieler.jpg) |
+| **Statistik** – Ø 3 Darts, Checkout-Quote, Lieblingsfelder | **Spieler** – Farbe, Ansage-Name, DiceBear-Avatare |
+| ![180](docs/screenshots/effekt-180.jpg) | ![Sieger](docs/screenshots/sieger.jpg) |
+| **Effekte** – 180, High Finish, Bull … | **Sieg** – Gewinner haben Bier verdient! |
+| ![Nacht](docs/screenshots/live-nacht.jpg) | ![WLED](docs/screenshots/einstellungen-wled.jpg) |
+| **Nachtmodus** | **WLED** – Lichteffekt je Ereignis |
+
+<img src="docs/screenshots/fernbedienung.jpg" width="260" align="right" alt="Fernbedienung">
+
+**Handy als Fernbedienung:** `/remote` (öffnet sich am Handy automatisch) – Werfer, Board zum Eintragen, Korrektur per Tabelle.
+
+**Schnellstart:** [Linux-Anleitung](docs/LINUX.md) · Windows: `BullsnBier-Setup-x.y.z.exe` unter [Releases](https://github.com/felixbro/BullsnBier/releases) · [Kurzanleitung (PDF)](docs/Kurzanleitung.pdf)
+
+<br clear="right">
+
 ## Systemanforderungen
 
 | | Minimum | Empfohlen |
@@ -18,6 +39,8 @@ Sprachausgabe: **Piper** (natürliche Offline-Stimmen, Linux + Windows). Häufig
 Avatare: **DiceBear HTTP-API** (`api.dicebear.com/9.x/<stil>/svg`), 20 Stile, Hintergrund- und Akzentfarbe nur aus der CI-Palette. Der Server lädt jedes Bild einmal und speichert es in `data/avatars/`. Ohne Netz bleibt die Silhouette.
 
 ## Linux
+
+Ausführlich mit fertigem Paket, Kalibrierung und Fehlersuche: **[docs/LINUX.md](docs/LINUX.md)**
 
 ```bash
 git clone https://github.com/felixbro/BullsnBier.git && cd BullsnBier
