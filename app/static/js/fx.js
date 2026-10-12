@@ -103,7 +103,7 @@ function fxData(key, ctx) {
   var o = {player: pl, name: pl.name, color: pl.color || PALETTE[0]};
   for (var k in ctx) o[k] = ctx[k];
   if (key === 'match_won' && g) {
-    var lw = s.legs_won, sw = s.sets_won, sets = +g.opts.sets, i = s.winner;
+    var lw = s.legs_won, sw = s.sets_won, sets = +g.opts.sets, i = s.winner != null ? s.winner : p;
     var other = Math.max.apply(null, (sets ? sw : lw).filter(function (_, k) { return k !== i; }).concat([0]));
     var turns = g.turns.filter(function (t) { return t.p === i; }), pts = 0, n = 0;
     turns.forEach(function (t) { pts += t.pts || 0; n += t.darts.length; });
