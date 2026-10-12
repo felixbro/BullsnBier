@@ -38,6 +38,7 @@ function displayTurn(m) {
 }
 
 function renderLive(m, fxDelay) {
+  updEnd(m);
   var card = $('#activeCard'), g = m.game;
   card.classList.remove('anim-bust', 'anim-turn', 'play');
   $('#liveLeft').textContent = m.sim ? 'Simulator' : 'Live-Erkennung';
@@ -232,6 +233,18 @@ function onBoardClick(name, xy) {
 }
 $('#btnUndo').onclick = function () { stopA(); sel = null; hold = null; api('/api/undo', 'POST'); };
 $('#btnFix').onclick = function () { fixMode = !fixMode; if (!fixMode) sel = null; render(ST); };
+/* Spiel abbrechen (läuft noch, wird nicht gewertet) bzw. beenden (Sieger steht fest, ist schon gespeichert) */
+function updEnd(m) {
+  var b = $('#btnEnd'), g = m && (m.game || m.bulloff);
+  b.classList.toggle('hidden', !g);
+  if (g) b.textContent = m.game && m.game.state.winner !== null ? 'Spiel beenden' : 'Spiel abbrechen';
+}
+$('#btnEnd').onclick = function () {
+  var done = ST && ST.game && ST.game.state.winner !== null;
+  if (!done && !confirm('Spiel abbrechen? Es wird nicht gewertet.')) return;
+  stopA(); sel = null; hold = null; fixMode = false;
+  api('/api/game', 'DELETE').then(function () { showPage('start'); });
+};
 $('#btnNext').onclick = function () { sel = null; hold = null; api('/api/next', 'POST'); };
 $('#darts3').innerHTML = DART_ICO + DART_ICO + DART_ICO;
 document.addEventListener('keydown', function (e) {

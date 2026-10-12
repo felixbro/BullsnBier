@@ -16,6 +16,9 @@ function rTurn(m) {
 }
 
 function render(m) {
+  var eb = $('#btnEnd'), eg = m.game || m.bulloff;
+  eb.classList.toggle('hidden', !eg);
+  if (eg) eb.textContent = m.game && m.game.state.winner !== null ? 'Spiel beenden' : 'Spiel abbrechen';
   var who = $('#who'), hint = $('#hint');
   if (m.bulloff) {
     var b = m.bulloff, p = b.players[b.current];
@@ -76,6 +79,11 @@ function onBoardClick(name, xy) {
   if (ST && ST.sim) return api('/api/sim/throw', 'POST', {x: xy[0], y: xy[1]});
   api('/api/dart', 'POST', {name: name, pos: xy});
 }
+$('#btnEnd').onclick = function () {
+  var done = ST && ST.game && ST.game.state.winner !== null;
+  if (!done && !confirm('Spiel abbrechen? Es wird nicht gewertet.')) return;
+  rsel = null; api('/api/game', 'DELETE');
+};
 $('#btnUndo').onclick = function () { rsel = null; api('/api/undo', 'POST'); };
 $('#btnNext').onclick = function () { rsel = null; api('/api/next', 'POST'); };
 

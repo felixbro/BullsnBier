@@ -411,3 +411,9 @@ button.hstatus{cursor:pointer;}
 [data-theme="night"] #board .hit{stroke:#202020; stroke-width:2.2; filter:drop-shadow(0 0 2px rgba(0,0,0,.8));}
 [data-theme="night"] #board .hit.sel{stroke:#FFFFFF; stroke-width:3;}
 [data-theme="night"] #board .hover{fill:#FFFFFF; stroke:#121313; stroke-width:5px; font-weight:600;}
+
+/* Spiel abbrechen / beenden – klein in der Board-Kopfzeile */
+.boardcard .card-head .lr{display:flex; align-items:center; gap:12px;}
+.btn-end{height:30px; padding:0 12px; border-radius:var(--r-nav); border:1px solid var(--glass-line); background:rgba(255,255,255,.5); color:var(--ink-2); font-size:var(--fs-label); white-space:nowrap; transition:var(--t-surface);}
+.btn-end:hover{background:var(--coral); border-color:var(--coral); color:#202020;}
+[data-theme="night"] .btn-end{background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.14);}
