@@ -136,6 +136,7 @@ function showPage(id) {
   $('#ctaNew').classList.toggle('hidden', id === 'live' || id === 'new');
   if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
   if (pageHooks[id]) pageHooks[id]();
+  if (typeof updEnd === 'function') updEnd(ST);   // Exit-Knopf nur auf Live
 }
 addEventListener('hashchange', function () { var h = location.hash.slice(1); if (h && h !== PAGE) showPage(h); });
 document.addEventListener('click', function (e) {

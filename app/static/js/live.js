@@ -236,8 +236,8 @@ $('#btnFix').onclick = function () { fixMode = !fixMode; if (!fixMode) sel = nul
 /* Spiel abbrechen (läuft noch, wird nicht gewertet) bzw. beenden (Sieger steht fest, ist schon gespeichert) */
 function updEnd(m) {
   var b = $('#btnEnd'), g = m && (m.game || m.bulloff);
-  b.classList.toggle('hidden', !g);
-  if (g) b.textContent = m.game && m.game.state.winner !== null ? 'Spiel beenden' : 'Spiel abbrechen';
+  b.classList.toggle('hidden', !g || PAGE !== 'live');
+  if (g) $('span', b).textContent = m.game && m.game.state.winner !== null ? 'Spiel beenden' : 'Spiel abbrechen';
 }
 $('#btnEnd').onclick = function () {
   var done = ST && ST.game && ST.game.state.winner !== null;

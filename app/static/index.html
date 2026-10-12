@@ -82,7 +82,7 @@
     <div class="live-grid">
       <section class="glass active livecard" id="activeCard"></section>
       <aside class="glass boardcard">
-        <div class="card-head meta"><span id="liveLeft">Live-Erkennung</span><span class="lr"><span id="liveRight"></span><button class="btn-end hidden" id="btnEnd" type="button">Spiel abbrechen</button></span></div>
+        <div class="card-head meta"><span id="liveLeft">Live-Erkennung</span><span id="liveRight"></span></div>
         <div class="pull glass hi anim-pull hidden" id="pullHint"><span class="darts3" id="darts3"></span>Pfeile ziehen</div>
         <div class="boardwrap"><svg id="board" class="board" viewBox="-210 -210 420 420" aria-label="Dartboard"></svg>
           <div class="manual glass hi hidden" id="manual"></div></div>
@@ -178,6 +178,7 @@
 
   <div class="toasts" id="toasts" aria-live="polite"></div>
   <div class="sr" id="live" aria-live="polite"></div>
+  <button class="btn-exit hidden" id="btnEnd" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"></path><path d="M15 16l4-4-4-4"></path><path d="M19 12H9"></path></svg><span>Spiel abbrechen</span></button>
   <div id="fxroot"></div>
 </div>
 

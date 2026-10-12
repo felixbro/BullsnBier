@@ -410,11 +410,12 @@ button.hstatus{cursor:pointer;}
 [data-theme="night"] #board .hit.sel{stroke:#FFFFFF; stroke-width:3;}
 [data-theme="night"] #board .hover{fill:#FFFFFF; stroke:#121313; stroke-width:5px; font-weight:600;}
 
-/* Spiel abbrechen / beenden – klein in der Board-Kopfzeile */
-.boardcard .card-head .lr{display:flex; align-items:center; gap:12px;}
-.btn-end{height:30px; padding:0 12px; border-radius:var(--r-nav); border:1px solid var(--glass-line); background:rgba(255,255,255,.5); color:var(--ink-2); font-size:var(--fs-label); white-space:nowrap; transition:var(--t-surface);}
-.btn-end:hover{background:var(--coral); border-color:var(--coral); color:#202020;}
-[data-theme="night"] .btn-end{background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.14);}
+/* Spiel abbrechen / beenden – Exit-Knopf unten rechts in der Ecke */
+.btn-exit{position:absolute; right:var(--pad-x); bottom:var(--pad-b); z-index:5; height:44px; padding:0 16px 0 12px; display:flex; align-items:center; gap:8px;
+  border-radius:var(--r-nav); border:1px solid var(--glass-line); background:rgba(255,255,255,.5); color:var(--ink-2); font-size:var(--fs-meta);
+  -webkit-backdrop-filter:blur(var(--glass-blur-s)); backdrop-filter:blur(var(--glass-blur-s)); transition:var(--t-surface);}
+.btn-exit:hover{background:var(--coral); border-color:var(--coral); color:#202020;}
+[data-theme="night"] .btn-exit{background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.14);}
 
 /* Nacht: Sieger-Animation bleibt wie im hellen Design (Lime-Schleier, dunkle Schrift) */
 [data-theme="night"] .fx--winner{--ink:#202020; --ink-2:#5F6A6C; --glass-line:rgba(255,255,255,.85); color:#202020;}
