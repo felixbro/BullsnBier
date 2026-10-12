@@ -75,14 +75,16 @@ function avatarURL(p) {
   return '/api/avatar?seed=' + encodeURIComponent(p.seed || p.name || '') + '&style=' + style + '&accent=' + encodeURIComponent(p.av_accent || 'ci');
 }
 /* Avatar: Grund = Spielerfarbe, CI-Farbe oder hell (av_bg), Motiv = DiceBear-SVG darüber */
+var AV_OK = {};   // schon geladene Avatar-URLs → beim Neuzeichnen keine Silhouette aufblitzen lassen
+function avLoaded(img) { AV_OK[img.getAttribute('src')] = 1; if (img.parentNode) img.parentNode.classList.add('ok'); }
 function avatar(p, size, ring, cls) {
   p = p || {};
-  var seed = p.seed || p.name || '', bg = p.av_bg || 'player';
-  var img = seed ? '<img src="' + avatarURL(p) + '" width="' + size + '" height="' + size + '" alt="" decoding="async" onload="this.parentNode&&this.parentNode.classList.add(\'ok\')" onerror="this.parentNode&&this.parentNode.removeChild(this)">' : '';
+  var seed = p.seed || p.name || '', bg = p.av_bg || 'player', url = seed ? avatarURL(p) : '', ok = url && AV_OK[url];
+  var img = url ? '<img src="' + url + '" width="' + size + '" height="' + size + '" alt="" decoding="' + (ok ? 'sync' : 'async') + '" onload="avLoaded(this)" onerror="this.parentNode&&this.parentNode.removeChild(this)">' : '';
   var bgs = bg === 'player' ? '' : bg === 'none' ? '; background:rgba(255,255,255,.85)' : '; background:var(--grad-avatar-light), ' + bg;
-  return '<span class="avatar' + (ring ? ' ring' : '') + (cls ? ' ' + cls : '') + '" style="--pc:' + (p.color || PALETTE[0]) + '; --av:' + size + 'px' + bgs + '">' + SIL + img + '</span>';
+  return '<span class="avatar' + (ok ? ' ok' : '') + (ring ? ' ring' : '') + (cls ? ' ' + cls : '') + '" style="--pc:' + (p.color || PALETTE[0]) + '; --av:' + size + 'px' + bgs + '">' + (ok ? '' : SIL) + img + '</span>';
 }
-function preloadAvatars(ps) { (ps || []).forEach(function (p) { var i = new Image(); i.src = avatarURL(p); }); }
+function preloadAvatars(ps) { (ps || []).forEach(function (p) { var i = new Image(), u = avatarURL(p); i.onload = function () { AV_OK[u] = 1; }; i.src = u; }); }
 
 /* Logo-Zeichen (§6.3) */
 function logo(s, dark) {
