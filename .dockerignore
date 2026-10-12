@@ -8,3 +8,4 @@ config.env
 __pycache__
 *.pyc
 dartcam.log
+.env

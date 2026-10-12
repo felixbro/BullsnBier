@@ -7,3 +7,4 @@ __pycache__/
 dartcam.log
 voices/
 data-docker/
+.env
