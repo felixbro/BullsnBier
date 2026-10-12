@@ -17,6 +17,7 @@ function saveLocal() { try { localStorage.setItem('bnb_local', JSON.stringify(LO
 /* Bühne 1920 × 1080 einpassen (§2) */
 var STAGE = $('#stage'), SCALE = 1;
 function fit() {
+  if (!STAGE) return;   // /remote hat keine Bühne
   SCALE = Math.min(innerWidth / 1920, innerHeight / 1080);
   STAGE.style.transform = 'scale(' + SCALE + ')'; STAGE.style.webkitTransform = 'scale(' + SCALE + ')';
   var ox = (innerWidth - 1920 * SCALE) / 2, oy = (innerHeight - 1080 * SCALE) / 2;
@@ -155,5 +156,5 @@ function applyDisplay() {
   if (!CFG) return;
   if (CFG.display.theme === 'night') ROOT.setAttribute('data-theme', 'night'); else ROOT.removeAttribute('data-theme');
   ROOT.classList.toggle('force-motion', CFG.display.intensity === 'ballern');
-  var h = hostPlayer(); $('#hostAvatar').innerHTML = h ? avatar(h, 44) : avatar({color: PALETTE[0]}, 44);
+  var h = hostPlayer(); if ($('#hostAvatar')) $('#hostAvatar').innerHTML = h ? avatar(h, 44) : avatar({color: PALETTE[0]}, 44);
 }

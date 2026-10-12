@@ -1,0 +1,10 @@
+.git
+.venv
+data
+data-sim
+data-docker
+voices
+config.env
+__pycache__
+*.pyc
+dartcam.log

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#E6E9E9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Bulls’n’Bier · Fernbedienung</title>
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/bnb.css">
+<link rel="stylesheet" href="/static/remote.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true">
+  <div class="blob lime" style="left:-30vw; top:-20vh; width:120vw; height:70vh"></div>
+  <div class="blob aqua" style="left:40vw; top:50vh; width:100vw; height:60vh"></div>
+</div>
+<main class="rm">
+  <header class="rm-head">
+    <span class="rm-brand"><span id="logoMark"></span><b>Bulls’n’Bier</b></span>
+    <span class="rm-status"><i class="dot" id="conDot"></i><span id="conTxt">verbinde …</span></span>
+  </header>
+  <section class="glass rm-card" id="who"></section>
+  <section class="glass rm-board">
+    <div class="rm-hint" id="hint"></div>
+    <svg id="board" class="board" viewBox="-210 -210 420 420" aria-label="Dartboard"></svg>
+  </section>
+  <nav class="rm-actions">
+    <button class="btn-glass" id="btnUndo" type="button">Rückgängig</button>
+    <button class="btn-primary" id="btnNext" type="button">Weiter</button>
+  </nav>
+  <a class="rm-full" href="/?desktop=1#live">Volle Ansicht</a>
+</main>
+<div class="toasts" id="toasts"></div>
+<div id="live" class="hidden" aria-live="polite"></div>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/board.js"></script>
+<script src="/static/js/remote.js"></script>
+</body>
+</html>

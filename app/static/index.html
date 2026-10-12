@@ -6,6 +6,14 @@
 <meta name="theme-color" content="#E6E9E9">
 <title>Bulls’n’Bier</title>
 <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+<script>/* Handy → Fernbedienung (/remote). ?desktop=1 merkt sich die volle Ansicht, ?desktop=0 setzt zurück */
+(function () { try {
+  var q = location.search, ls = localStorage;
+  if (/desktop=1/.test(q)) ls.setItem('bnb_desktop', '1'); if (/desktop=0/.test(q)) ls.removeItem('bnb_desktop');
+  var phone = matchMedia('(pointer:coarse)').matches && Math.min(screen.width, screen.height) < 600;
+  if (location.hash === '#remote' || (phone && !ls.getItem('bnb_desktop'))) location.replace('/remote');
+} catch (e) {} })();
+</script>
 <link rel="stylesheet" href="/static/bnb.css">
 <link rel="stylesheet" href="/static/app.css">
 </head>

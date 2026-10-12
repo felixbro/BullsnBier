@@ -45,6 +45,22 @@ autostart-windows.bat        :: optional: Start bei Anmeldung
 
 Python von python.org mit Haken „Add to PATH“. Zugriff von Handy/Tablet: Windows-Firewall für Port 8090 freigeben.
 
+## Docker (Simulator-Demo)
+
+Für eine Demo über das Internet läuft nur der Simulator, Kameras gibt es im Container keine.
+
+```bash
+git clone https://github.com/felixbro/DartCam.git && cd DartCam
+ACCESS_KEY=meinschluessel docker compose up -d --build
+```
+
+→ `http://server:8080/?key=meinschluessel` (einmal öffnen, danach merkt sich der Browser den Schlüssel). Ohne `ACCESS_KEY` ist die App offen.
+Daten liegen in `./data-docker`. Für HTTPS einen Reverse-Proxy davorschalten (Pangolin, Caddy, Traefik, Cloudflare Tunnel); WebSockets müssen durchgereicht werden.
+
+## Handy als Fernbedienung
+
+`http://<pc>:8090/remote` zeigt den aktuellen Werfer und das Board. Ein Tipp aufs Board trägt den Wurf ein, ein Tipp auf einen Dart und dann aufs Feld korrigiert ihn. Handys landen automatisch dort. Die volle Ansicht bekommst du mit `/?desktop=1`, zurück zur Fernbedienung mit `/?desktop=0`.
+
 ## Bedienung
 
 → `http://<rechner>:8090`

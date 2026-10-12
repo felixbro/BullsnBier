@@ -1,0 +1,12 @@
+services:
+  bullsnbier:
+    build: .
+    image: bullsnbier:latest
+    container_name: bullsnbier
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ACCESS_KEY=${ACCESS_KEY:-}   # leer = offen · gesetzt = einmal /?key=… öffnen
+    volumes:
+      - ./data-docker:/data

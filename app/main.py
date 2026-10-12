@@ -35,6 +35,43 @@ async def lifespan(_app):
 
 app = FastAPI(title="Bulls'n'Bier", lifespan=lifespan)
 
+# ---------------- Zugangsschutz (optional, z. B. Demo im Internet) ----------------
+# ACCESS_KEY=geheim → einmal https://host/?key=geheim öffnen, danach merkt sich der Browser das per Cookie.
+ACCESS_KEY = os.environ.get("ACCESS_KEY", "").strip()
+
+
+class KeyGate:
+    def __init__(self, app):
+        self.inner = app
+
+    async def __call__(self, scope, receive, send):
+        if not ACCESS_KEY or scope["type"] not in ("http", "websocket"):
+            return await self.inner(scope, receive, send)
+        from urllib.parse import parse_qs
+        from http.cookies import SimpleCookie
+        qs = parse_qs(scope.get("query_string", b"").decode())
+        hdr = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+        ck = SimpleCookie(hdr.get("cookie", ""))
+        ok = (ck.get("bnb_key") and ck["bnb_key"].value == ACCESS_KEY) or qs.get("key", [""])[0] == ACCESS_KEY
+        if ok:
+            if qs.get("key") and scope["type"] == "http":   # Cookie setzen
+                async def send2(msg):
+                    if msg["type"] == "http.response.start":
+                        msg.setdefault("headers", []).append(
+                            (b"set-cookie", f"bnb_key={ACCESS_KEY}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax".encode()))
+                    await send(msg)
+                return await self.inner(scope, receive, send2)
+            return await self.inner(scope, receive, send)
+        if scope["type"] == "websocket":
+            return await send({"type": "websocket.close", "code": 4401})
+        body = "<!doctype html><meta charset=utf-8><title>Bulls'n'Bier</title><body style='font:18px sans-serif;padding:40px'>" \
+               "<form>Zugangsschlüssel: <input name=key autofocus> <button>Los</button></form>".encode()
+        await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"text/html; charset=utf-8")]})
+        await send({"type": "http.response.body", "body": body})
+
+
+app.add_middleware(KeyGate)
+
 
 # ---------------- Zustand → Clients ----------------
 async def broadcast(msg):
@@ -716,6 +753,11 @@ async def api_sim_event(kind: str):
         S["errors"] = []
         await emit([])
     return {"ok": True}
+
+
+@app.get("/remote")
+def remote():
+    return FileResponse(os.path.join(STATIC, "remote.html"))
 
 
 @app.get("/")
