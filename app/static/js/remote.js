@@ -1,6 +1,7 @@
 /* Fernbedienung fürs Handy (/remote): aktueller Werfer + Board zum Eintragen und Korrigieren.
    Keine Sprachausgabe, keine Vollbild-Effekte. */
 var rsel = null;   // {ti, i} gewählter Dart
+var rmult = 'S';   // Korrektur-Tabelle: Single/Double/Triple
 
 function dartLabel(n) { return n === 'BULL' ? 'Bull' : n === '25' ? '25' : n === 'MISS' ? 'Miss' : n; }
 function chipCls(d) {
@@ -45,16 +46,33 @@ function render(m) {
     '<div class="rm-line">' + line + (g.players.length > 1 && s.winner === null ? '<span class="rm-next">Danach: ' + esc(nxt.name) + '</span>' : '') + '</div>';
   $$('#chips [data-i]').forEach(function (c) { c.onclick = function () {
     var i = +c.dataset.i; rsel = rsel && rsel.ti === t.ti && rsel.i === i ? null : {ti: t.ti, i: i}; render(ST); }; });
-  hint.innerHTML = rsel ? '<b>Dart ' + (rsel.i + 1) + ' korrigieren</b> – richtiges Feld tippen (außen = Miss)' :
+  renderPad();
+  hint.innerHTML = rsel ? '<b>Dart ' + (rsel.i + 1) + ' korrigieren</b> – richtigen Wert wählen' :
     t.closed ? 'Aufnahme fertig – „Weiter“ wenn die Pfeile gezogen sind' : (m.sim ? 'Simulator: Wurf aufs Board tippen' : 'Wurf eintragen: Feld tippen · Korrigieren: Dart oben antippen');
   $('#btnNext').textContent = t.closed || t.darts.length >= 3 ? 'Nächster Spieler' : 'Aufnahme beenden';
   drawHits(t.darts, rsel && rsel.ti === t.ti ? rsel.i : -1);
   drawTargets(route, s.targets && !t.closed ? targetFields(s.targets[s.current]) : []);
 }
 
+/* Korrektur über die Tabelle statt übers Board */
+function renderPad() {
+  var pad = $('#pad'), on = !!rsel;
+  pad.classList.toggle('hidden', !on); $('#board').classList.toggle('hidden', on);
+  if (!on) return;
+  var nums = ''; for (var n = 1; n <= 20; n++) nums += '<button type="button" data-n="' + n + '">' + n + '</button>';
+  pad.innerHTML = '<div class="seg" id="padMult"><button data-v="S">Single</button><button data-v="D">Double</button><button data-v="T">Triple</button></div>' +
+    '<div class="rm-nums">' + nums + '</div><div class="rm-specials"><button type="button" data-f="25">25</button><button type="button" data-f="BULL">Bull</button>' +
+    '<button type="button" data-f="MISS">Miss</button><button type="button" class="x" data-x>Abbrechen</button></div>';
+  segment($('#padMult'), rmult, function (v) { rmult = v; });
+  $$('#pad [data-n], #pad [data-f]').forEach(function (b) { b.onclick = function () {
+    if (navigator.vibrate) navigator.vibrate(15);
+    var name = b.dataset.f || (rmult + b.dataset.n), body = {ti: rsel.ti, i: rsel.i, name: name};
+    rsel = null; rmult = 'S'; api('/api/edit', 'POST', body); }; });
+  $('#pad [data-x]').onclick = function () { rsel = null; render(ST); };
+}
+
 function onBoardClick(name, xy) {
   if (navigator.vibrate) navigator.vibrate(15);
-  if (rsel) { var b = {ti: rsel.ti, i: rsel.i, name: name, pos: xy}; rsel = null; return api('/api/edit', 'POST', b); }
   if (ST && ST.sim) return api('/api/sim/throw', 'POST', {x: xy[0], y: xy[1]});
   api('/api/dart', 'POST', {name: name, pos: xy});
 }

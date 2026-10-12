@@ -34,6 +34,16 @@ body{overflow-x:hidden;}
 #board .cotgt{fill:none; stroke:var(--b-target); stroke-width:3; stroke-dasharray:4 3; pointer-events:none;}
 #board .tgt{fill:none; stroke:var(--b-target); stroke-width:3; stroke-dasharray:6 4; pointer-events:none;}
 #board .hover{display:none;}
+.rm-pad{display:flex; flex-direction:column; gap:8px;}
+.rm-pad .seg button{height:44px; font-size:var(--fs-ui);}
+.rm-nums{display:grid; grid-template-columns:repeat(5,1fr); gap:6px;}
+.rm-specials{display:grid; grid-template-columns:1fr 1fr 1fr 1.4fr; gap:6px;}
+.rm-nums button, .rm-specials button{height:52px; border-radius:var(--r-field); border:1px solid var(--glass-line); background:rgba(255,255,255,.65); font:inherit; font-size:20px; color:var(--ink);}
+.rm-specials button{font-size:var(--fs-body);}
+.rm-specials .x{background:transparent; color:var(--ink-2);}
+.rm-nums button:active, .rm-specials button:active{background:var(--lime); color:#202020;}
+[data-theme="night"] .rm-nums button, [data-theme="night"] .rm-specials button{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.14);}
+[data-theme="night"] .seg{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.12);}
 .rm-actions{display:grid; grid-template-columns:1fr 1.4fr; gap:8px;}
 .rm-actions button{height:56px; font-size:var(--fs-body);}
 .rm-actions button:disabled{opacity:.4;}
