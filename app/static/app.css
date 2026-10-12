@@ -336,3 +336,74 @@ button.hstatus{cursor:pointer;}
 .fxrow .chk input{flex:none;}
 /* Silhouette nur, solange kein DiceBear-Bild da ist */
 .avatar.ok > svg{display:none;}
+
+/* ====================================================================
+   NACHT-FASSUNG · Lesbarkeit
+   Regel: Flächen werden dunkel-transparent, Text hell. Auf Lime, Coral,
+   Mint und Spielerfarben steht immer Ink (#202020) – nie heller Text.
+   ==================================================================== */
+:root[data-theme="night"]{
+  --mist:#121313; --ink:#F2F4F4; --ink-2:#B4BDBF;
+  --glass-1:rgba(255,255,255,.05); --glass-2:rgba(255,255,255,.07); --glass-3:rgba(255,255,255,.11); --glass-4:rgba(255,255,255,.20);
+  --glass-line:rgba(255,255,255,.14);
+  --slate:#4A5355; --slate-2:#5E686A;
+  --grad-active:linear-gradient(135deg, rgba(221,249,106,.22) 0%, rgba(255,255,255,.06) 50%, rgba(255,255,255,.04) 100%);
+  --grad-active-s:linear-gradient(160deg, rgba(221,249,106,.24) 0%, rgba(255,255,255,.06) 100%);
+  --shadow-active:0 30px 60px rgba(0,0,0,.35); --shadow-tab:0 4px 12px rgba(0,0,0,.35);
+
+}
+/* Flächen */
+[data-theme="night"] .nav a:hover, [data-theme="night"] .btn-glass, [data-theme="night"] .btn-icon, [data-theme="night"] .seg,
+[data-theme="night"] .field input, [data-theme="night"] .field select, [data-theme="night"] .dart.single, [data-theme="night"] .checkout,
+[data-theme="night"] .mode, [data-theme="night"] .lastturns span, [data-theme="night"] .infobox, [data-theme="night"] .crtable .m,
+[data-theme="night"] .manual .prev button, [data-theme="night"] .pchip, [data-theme="night"] .pick-card .guest .row input,
+[data-theme="night"] .ptile.add .plus, [data-theme="night"] .avsw button, [data-theme="night"] .avstyles button, [data-theme="night"] .avseeds button,
+[data-theme="night"] .swatches .rnd, [data-theme="night"] .favs .bar, [data-theme="night"] .palette span, [data-theme="night"] .texts .row input,
+[data-theme="night"] .vrow, [data-theme="night"] .fxrow select, [data-theme="night"] .fxrow input[type=number], [data-theme="night"] .sfield input,
+[data-theme="night"] .toast{
+  background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.14); color:var(--ink);
+}
+[data-theme="night"] .btn-glass:hover, [data-theme="night"] .btn-icon:hover, [data-theme="night"] .seg button:hover,
+[data-theme="night"] .mode:hover, [data-theme="night"] .pchip:hover, [data-theme="night"] .avstyles button:hover, [data-theme="night"] .avseeds button:hover{
+  background:rgba(255,255,255,.14);
+}
+[data-theme="night"] .toast{background:rgba(30,32,32,.94);}
+[data-theme="night"] select option{background:#1E2020; color:#F2F4F4;}
+[data-theme="night"] .seg__thumb, [data-theme="night"] .seg button.on, [data-theme="night"] .nav a.on{background:rgba(255,255,255,.20);}
+[data-theme="night"] .seg button.on, [data-theme="night"] .seg.js button.on{color:#FFFFFF;}
+/* Text auf Akzentfarben immer Ink */
+[data-theme="night"] .btn-cta, [data-theme="night"] .mode.on, [data-theme="night"] .mode.on b, [data-theme="night"] .btn-icon.on,
+[data-theme="night"] .manual .prev .done, [data-theme="night"] .pchip.on, [data-theme="night"] .dart.double, [data-theme="night"] .dart.triple,
+[data-theme="night"] .dart.bull, [data-theme="night"] .tag.next, [data-theme="night"] .chk .btn-icon.on{color:#202020;}
+[data-theme="night"] .mode.on small, [data-theme="night"] .dart.double small, [data-theme="night"] .dart.triple small, [data-theme="night"] .dart.bull small{color:rgba(32,32,32,.7);}
+[data-theme="night"] .pchip.on, [data-theme="night"] .pchip.guest.on{border-color:transparent;}
+[data-theme="night"] .btn-cta::before{background:#000;}
+[data-theme="night"] .btn-cta:hover, [data-theme="night"] .btn-cta:focus-visible{color:var(--lime);}
+/* Primär: Lime statt Ink, Text dunkel */
+[data-theme="night"] .btn-primary, [data-theme="night"] .btn-primary.lime-text{background:var(--lime); color:#202020;}
+[data-theme="night"] .btn-primary:hover{background:#F3FFAC;}
+[data-theme="night"] .tag.active{background:var(--lime); color:#202020;}
+[data-theme="night"] .tag.next{background:rgba(127,221,235,.85);}
+/* gewählt = hell mit Ink-Text */
+[data-theme="night"] .manual .prev button.sel, [data-theme="night"] .avsw button.on{background:#F2F4F4; color:#202020;}
+[data-theme="night"] .avstyles button.on, [data-theme="night"] .avseeds button.on{background:rgba(255,255,255,.18); box-shadow:0 0 0 3px #121313, 0 0 0 5px var(--lime);}
+[data-theme="night"] .swatches button.on{box-shadow:0 0 0 3px #121313, 0 0 0 5px #F2F4F4;}
+[data-theme="night"] .avatar.ring{box-shadow:0 0 0 3px #121313, 0 0 0 6px var(--pc,var(--p1));}
+[data-theme="night"] .avsheet{background:rgba(10,11,11,.6);}
+[data-theme="night"] input::placeholder{color:rgba(242,244,244,.45);}
+[data-theme="night"] input[type=checkbox]{accent-color:var(--lime);}
+/* Effekte: im Dunkeln mit dunklem Schleier, Text hell; Lime-Flächen tragen Ink */
+[data-theme="night"] .fx__veil{background:rgba(18,19,19,.72);}
+[data-theme="night"] .fx--winner .fx__veil{background:linear-gradient(150deg, rgba(60,70,20,.94) 0%, rgba(30,34,20,.92) 50%, rgba(18,19,19,.94) 100%);}
+[data-theme="night"] .fx--winner .fx__rays{opacity:.35;}
+[data-theme="night"] .fx--start .fx__word, [data-theme="night"] .fx--start .fx__sub{color:#202020;}
+[data-theme="night"] .fx__tag span{background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.2); color:var(--ink);}
+[data-theme="night"] .mode.on{background:linear-gradient(150deg, #F3FFAC 0%, rgba(221,249,106,.88) 100%); border-color:transparent;}
+[data-theme="night"] .fx--triple .fx__word{background-image:linear-gradient(180deg, #F2F4F4 0%, #F2F4F4 45%, #FF6B5E 100%);}
+[data-theme="night"] .fx--finish .fx__word{background-image:linear-gradient(180deg, #F2F4F4 0%, #F2F4F4 50%, #3DBB7A 100%);}
+[data-theme="night"] .fx__plus, [data-theme="night"] .fx__chips span, [data-theme="night"] .fx__way span, [data-theme="night"] .fx--leg .fx__who{color:#202020;}
+[data-theme="night"] .pchip.on, [data-theme="night"] .pchip.guest.on{background:var(--pc,rgba(255,255,255,.2)); color:#202020;}
+[data-theme="night"] .btn-icon.on{background:var(--lime); border-color:var(--lime); color:#202020;}
+[data-theme="night"] .pcard.next .state{color:var(--aqua);}
+[data-theme="night"] .seg__thumb{background:rgba(255,255,255,.16);}
+[data-theme="night"] .board{--b-surround:#2A2D2D; --b-wire:#4A5355;}
