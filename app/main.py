@@ -755,17 +755,17 @@ async def api_sim_event(kind: str):
     return {"ok": True}
 
 
-@app.get("/healthz")
+@app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     return {"ok": True}   # für Reverse-Proxy-Healthchecks, auch ohne Zugangsschlüssel erreichbar
 
 
-@app.get("/remote")
+@app.api_route("/remote", methods=["GET", "HEAD"])
 def remote():
     return FileResponse(os.path.join(STATIC, "remote.html"))
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def index():
     return FileResponse(os.path.join(STATIC, "index.html"))
 
