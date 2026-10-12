@@ -45,7 +45,7 @@ class KeyGate:
         self.inner = app
 
     async def __call__(self, scope, receive, send):
-        if not ACCESS_KEY or scope["type"] not in ("http", "websocket"):
+        if not ACCESS_KEY or scope["type"] not in ("http", "websocket") or scope.get("path") == "/healthz":
             return await self.inner(scope, receive, send)
         from urllib.parse import parse_qs
         from http.cookies import SimpleCookie
@@ -753,6 +753,11 @@ async def api_sim_event(kind: str):
         S["errors"] = []
         await emit([])
     return {"ok": True}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}   # für Reverse-Proxy-Healthchecks, auch ohne Zugangsschlüssel erreichbar
 
 
 @app.get("/remote")
