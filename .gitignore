@@ -1,0 +1,7 @@
+.venv/
+data/
+data-sim/
+config.env
+__pycache__/
+*.pyc
+dartcam.log

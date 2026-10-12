@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1113">
+<title>DartCam</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">Dart<span>Cam</span></div>
+  <nav>
+    <button data-tab="play" class="on">Spiel</button>
+    <button data-tab="setup">Neu</button>
+    <button data-tab="stats">Statistik</button>
+    <button data-tab="cams">Kameras</button>
+    <button data-tab="settings">Einstellungen</button>
+  </nav>
+  <div class="status"><span id="dot" class="dot"></span><button id="voice" title="Caller">🔊</button></div>
+</header>
+
+<main>
+<!-- SPIEL -->
+<section id="play" class="tab on">
+  <div id="scoreboard" class="scoreboard"></div>
+  <div class="playgrid">
+    <div class="boardwrap"><svg id="board" viewBox="-205 -205 410 410"></svg></div>
+    <div class="side">
+      <div id="turn" class="turn"></div>
+      <div id="checkout" class="checkout"></div>
+      <div id="banner" class="banner"></div>
+      <div class="actions">
+        <button id="btnNext" class="big">Pfeile gezogen ⟶</button>
+        <button id="btnUndo">Rückgängig</button>
+        <button id="btnMiss">Miss</button>
+      </div>
+      <details class="pad"><summary>Manuelle Eingabe</summary>
+        <div class="mult"><button data-m="S" class="on">Single</button><button data-m="D">Double</button><button data-m="T">Triple</button></div>
+        <div id="nums" class="nums"></div>
+      </details>
+      <div id="sim" class="sim hidden">
+        <b>Simulator</b><span class="hint" style="flex-basis:100%">Aufs Board klicken = Wurf an genau dieser Stelle. Oder zufällig streuen:</span>
+        <button data-aim="T20">→ T20</button><button data-aim="T19">→ T19</button>
+        <button data-aim="BULL">→ Bull</button><button id="simOut">Takeout</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SETUP -->
+<section id="setup" class="tab">
+  <div class="card">
+    <h2>Neues Spiel</h2>
+    <div class="row seg" id="mode">
+      <button data-v="x01" class="on">X01</button><button data-v="cricket">Cricket</button><button data-v="atc">Around the Clock</button>
+    </div>
+    <div id="x01opts">
+      <label>Start</label>
+      <div class="row seg" id="start"><button data-v="301">301</button><button data-v="501" class="on">501</button><button data-v="701">701</button></div>
+      <label>In</label>
+      <div class="row seg" id="in"><button data-v="single" class="on">Single</button><button data-v="double">Double</button><button data-v="master">Master</button></div>
+      <label>Out</label>
+      <div class="row seg" id="out"><button data-v="single">Single</button><button data-v="double" class="on">Double</button><button data-v="master">Master</button></div>
+    </div>
+    <label>Legs (First to)</label>
+    <div class="row seg" id="legs"><button data-v="1" class="on">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="5">5</button></div>
+    <label>Spieler (Reihenfolge = Antippen)</label>
+    <div id="pick" class="pick"></div>
+    <div class="row"><input id="guest" placeholder="Gast hinzufügen"><button id="addGuest">+</button></div>
+    <button id="startGame" class="big">Game on</button>
+  </div>
+</section>
+
+<!-- STATS -->
+<section id="stats" class="tab">
+  <div class="card">
+    <h2>Spieler</h2>
+    <div class="row"><input id="newPlayer" placeholder="Name"><button id="addPlayer">Anlegen</button></div>
+    <div id="plist" class="plist"></div>
+  </div>
+  <div class="card" id="pstats"></div>
+  <div class="card"><h2>Letzte Spiele</h2><div id="glist"></div></div>
+</section>
+
+<!-- EINSTELLUNGEN -->
+<section id="settings" class="tab">
+  <div class="card">
+    <h2>Sprachausgabe</h2>
+    <div class="opts">
+      <label class="sw"><input type="checkbox" data-c="enabled"> Ansagen aktiv (alle Geräte)</label>
+      <label class="sw"><input type="checkbox" id="localMute"> Dieses Gerät stumm</label>
+    </div>
+    <label>Sprache</label>
+    <div class="row seg" id="lang"><button data-v="de">Deutsch</button><button data-v="en">English</button></div>
+    <label>Stimme (nur dieses Gerät)</label>
+    <div class="row"><select id="voiceSel"></select><button id="voiceTest">Probe</button></div>
+    <div id="voiceHint" class="hint"></div>
+    <div class="sliders">
+      <label>Tempo <input type="range" min="0.6" max="1.6" step="0.05" data-c="rate"><output></output></label>
+      <label>Tonhöhe <input type="range" min="0.5" max="1.5" step="0.05" data-c="pitch"><output></output></label>
+      <label>Lautstärke <input type="range" min="0" max="1" step="0.05" data-c="volume"><output></output></label>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Was wird angesagt?</h2>
+    <div class="opts">
+      <label class="sw"><input type="checkbox" data-c="say_start"> Spielstart + wer beginnt</label>
+      <label class="sw"><input type="checkbox" data-c="say_dart"> Jeder einzelne Dart</label>
+      <label class="sw"><input type="checkbox" data-c="say_turn"> Punkte der Aufnahme</label>
+      <label class="sw"><input type="checkbox" data-c="say_bust"> Überworfen</label>
+      <label class="sw"><input type="checkbox" data-c="say_next"> Wer als Nächstes dran ist</label>
+      <label class="sw"><input type="checkbox" data-c="say_leg"> Leg gewonnen</label>
+      <label class="sw"><input type="checkbox" data-c="say_match"> Spiel gewonnen</label>
+      <label class="sw"><input type="checkbox" data-c="say_correction"> Korrekturen</label>
+      <label class="sw"><input type="checkbox" data-c="say_takeout"> „Pfeile ziehen“</label>
+    </div>
+    <label>Restpunkte ansagen</label>
+    <div class="row seg" id="remain"><button data-v="off">Nie</button><button data-v="finish">Nur im Finish-Bereich</button><button data-v="always">Immer</button></div>
+  </div>
+  <div class="card">
+    <h2>Ansagetexte <span class="hint" id="textsLang"></span></h2>
+    <p class="hint">Platzhalter: {name} Spieler · {score} Rest · {points} Punkte · {n} Zahl · {dart} Feld. Feld leeren = Standard.</p>
+    <div id="texts" class="texts"></div>
+    <div class="row"><button id="resetSettings">Alles auf Standard</button></div>
+  </div>
+  <div class="card">
+    <h2>Simulator</h2>
+    <label class="sw"><input type="checkbox" data-g="auto_next_sim"> Nach 3 Darts nächster Klick startet direkt die nächste Aufnahme</label>
+  </div>
+</section>
+
+<!-- KAMERAS -->
+<section id="cams" class="tab">
+  <div class="card">
+    <h2>Kalibrierung</h2>
+    <p class="hint">Punkt wählen, dann im Bild auf die <b>Außenkante des Double-Rings</b> in der Mitte des Segments tippen. Danach „Speichern“ – das gelbe Raster muss exakt auf dem Board liegen.</p>
+    <div class="row">
+      <button id="detPause">Erkennung pausieren</button>
+      <button id="detReset">Referenz neu (Board leer)</button>
+      <span id="fps" class="hint"></span>
+    </div>
+  </div>
+  <div id="camlist"></div>
+</section>
+</main>
+
+<div id="toast" class="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
