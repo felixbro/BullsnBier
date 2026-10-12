@@ -19,7 +19,9 @@ var STAGE = $('#stage'), SCALE = 1;
 function fit() {
   SCALE = Math.min(innerWidth / 1920, innerHeight / 1080);
   STAGE.style.transform = 'scale(' + SCALE + ')'; STAGE.style.webkitTransform = 'scale(' + SCALE + ')';
-  STAGE.style.left = (innerWidth - 1920 * SCALE) / 2 + 'px'; STAGE.style.top = (innerHeight - 1080 * SCALE) / 2 + 'px';
+  var ox = (innerWidth - 1920 * SCALE) / 2, oy = (innerHeight - 1080 * SCALE) / 2;
+  STAGE.style.left = ox + 'px'; STAGE.style.top = oy + 'px';
+  STAGE.style.setProperty('--ox', Math.ceil(ox / SCALE) + 2 + 'px'); STAGE.style.setProperty('--oy', Math.ceil(oy / SCALE) + 2 + 'px');
 }
 addEventListener('resize', fit); fit();
 

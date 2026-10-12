@@ -116,6 +116,16 @@ def load():
         for k, v in texts.items():
             if not str(v).strip() and k in DEFAULTS["texts"].get(lang, {}):
                 texts[k] = DEFAULTS["texts"][lang][k]
+    # nur CI-Farben: Altbestand außerhalb der Palette fällt auf den Standard zurück (außer Gewinner)
+    for k, e in data["wled"]["effects"].items():
+        d = _fx.DEFAULTS.get(k, {})
+        for c in ("c1", "c2"):
+            v = str(e.get(c, "")).upper()
+            if k not in _fx.FREE_COLOR and v != "PLAYER" and v not in _fx.CI_COLORS:
+                e[c] = d.get(c, "#DDF96A")
+            elif v != "PLAYER":
+                e[c] = v
+    data["display"]["player_colors"] = list(_fx.PLAYER_COLORS)
     return data
 
 

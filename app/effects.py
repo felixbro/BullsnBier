@@ -51,7 +51,7 @@ DEFAULTS = {
     "next_player":  E(0, "player", dur=0),
     "checkout":     E(2, "player", dur=0, sx=150),
     "takeout":      E(28, "#7FDDEB", "player", dur=0, sx=160),
-    "dart_single":  E(0, "#ffffff", dur=0.4, on=False),
+    "dart_single":  E(0, "#FFFFFF", dur=0.4, on=False),
     "dart_double":  E(1, "#3DBB7A", dur=0.8, sx=220),
     "dart_triple":  E(1, "#FF6B5E", dur=1.2, sx=220),
     "dart_bull":    E(23, "#3DBB7A", "#FF6B5E", dur=1.4, sx=200),
@@ -72,6 +72,11 @@ DEFAULTS = {
     "cam_error":    E(1, "#FF6B5E", "#7FDDEB", dur=0, sx=160),
     "paused":       E(2, "#FF6B5E", bri=60, dur=0),
 }
+
+# Erlaubte WLED-Farben (CI) · „Gewinner“ (match_won) darf frei bunt sein
+CI_COLORS = {"#DDF96A": "Lime", "#F3FFAC": "Lime hell", "#FF6B5E": "Coral", "#3DBB7A": "Mint", "#7FDDEB": "Aqua",
+             "#2AAFC4": "Aqua stark", "#FFD66B": "Sonne", "#BDC8CB": "Slate", "#FFFFFF": "Weiß", "#000000": "Aus/Schwarz"}
+FREE_COLOR = {"match_won"}
 
 PLAYER_COLORS = ["#6FA8FF", "#FF7A6B", "#5FCB92", "#FFD66B", "#B79CFF", "#FFB27A", "#7FDDEB", "#FF8FC2"]  # --p1 … --p8
 

@@ -1,6 +1,6 @@
 /* 06 · Live-Spiel: aktiver Werfer groß, Board rechts, Spieler unten (Styleguide §2, §6.3) */
 var sel = null;            // {ti, i} Dart zur Korrektur
-var fixMode = false, fixMult = 'S';
+var fixMode = false;
 var hold = null;           // {p, ti, until} Nachlauf: Werfer bleibt kurz sichtbar, damit B-Effekte wirken
 var shown = {};            // zuletzt angezeigte Werte je Spieler (für countTo)
 var lastDisplayP = null, lastRouteKey = '', lastPull = false;
@@ -213,16 +213,11 @@ function renderManual() {
   if (s.last_turn) turns.push([ST.game.players[s.last_turn.p].name, s.last_turn.ti, s.last_turn.darts]);
   var prev = turns.map(function (t) { return '<span class="meta">' + esc(t[0]) + '</span>' + t[2].map(function (d, i) {
     return '<button type="button" data-ti="' + t[1] + '" data-i="' + i + '" class="' + (sel && sel.ti === t[1] && sel.i === i ? 'sel' : '') + '">' + dartLabel(d.name) + '</button>'; }).join(''); }).join('');
-  var nums = ''; for (var n = 1; n <= 20; n++) nums += '<button type="button" data-n="' + n + '">' + n + '</button>';
-  nums += '<button type="button" data-f="25">25</button><button type="button" data-f="BULL">Bull</button>' +
-    '<button type="button" data-f="MISS">Miss</button><button type="button" data-close>Fertig</button>';
-  box.innerHTML = '<div class="sel-info">' + (sel ? 'Dart wählen ✓ – jetzt Feld tippen (Board oder Tasten)' : 'Dart antippen zum Korrigieren – oder Feld tippen, um einen Wurf einzutragen') + '</div>' +
-    '<div class="prev">' + prev + '</div><div class="seg" id="fixMult"><button data-v="S">Single</button><button data-v="D">Double</button><button data-v="T">Triple</button></div><div class="nums">' + nums + '</div>';
-  segment($('#fixMult'), fixMult, function (v) { fixMult = v; });
-  $$('.prev button', box).forEach(function (b) { b.onclick = function () { pickSel(+b.dataset.ti, +b.dataset.i); }; });
-  $$('.nums button', box).forEach(function (b) { b.onclick = function () {
+  box.innerHTML = '<div class="sel-info">' + (sel ? 'Dart gewählt ✓ – jetzt Feld auf dem Board tippen (außerhalb = Miss)' : 'Dart antippen, dann Feld auf dem Board tippen – ohne Auswahl wird ein Wurf eingetragen') + '</div>' +
+    '<div class="prev">' + prev + '<button type="button" class="done" data-close>Fertig</button></div>';
+  $$('.prev button', box).forEach(function (b) { b.onclick = function () {
     if (b.hasAttribute('data-close')) { fixMode = false; sel = null; return render(ST); }
-    manualDart(b.dataset.f || fixMult + b.dataset.n); }; });
+    pickSel(+b.dataset.ti, +b.dataset.i); }; });
 }
 function manualDart(name, pos) {
   var body = {name: name}; if (pos) body.pos = pos;

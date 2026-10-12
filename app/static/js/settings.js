@@ -136,6 +136,8 @@ function subTexts() {
 }
 
 /* ---------- WLED ---------- */
+var CI_WLED = [['player', 'Spieler'], ['#DDF96A', 'Lime'], ['#F3FFAC', 'Lime hell'], ['#FF6B5E', 'Coral'], ['#3DBB7A', 'Mint'], ['#7FDDEB', 'Aqua'],
+  ['#2AAFC4', 'Aqua stark'], ['#FFD66B', 'Sonne'], ['#BDC8CB', 'Slate'], ['#FFFFFF', 'Weiß'], ['#000000', 'Aus']];
 function subWled() {
   var fx = (wledInfo && wledInfo.effects.length ? wledInfo.effects.map(function (n, i) { return [i, n]; }) : WLED_FX.slice())
     .filter(function (x) { return x[1] && x[1] !== 'RSVD' && x[1] !== '-'; })
@@ -144,8 +146,12 @@ function subWled() {
     .sort(function (a, b) { return a[1].localeCompare(b[1], 'de'); });
   var groups = {};
   Object.keys(EVENTS).forEach(function (k) { (groups[EVENTS[k].group] = groups[EVENTS[k].group] || []).push(k); });
-  var color = function (k, n, c) { var pl = c === 'player';
-    return '<span class="col"><input type="color" data-f="' + n + '" value="' + (pl ? PALETTE[0] : c) + '"' + (pl ? ' disabled' : '') + '><label title="Spielerfarbe"><input type="checkbox" data-pl="' + n + '"' + (pl ? ' checked' : '') + '>Sp.</label></span>'; };
+  var color = function (k, n, c) {
+    if (k === 'match_won') { var pl = c === 'player';   // Gewinner darf frei bunt sein
+      return '<span class="col"><input type="color" data-f="' + n + '" value="' + (pl ? PALETTE[0] : c) + '"' + (pl ? ' disabled' : '') + '><label title="Spielerfarbe"><input type="checkbox" data-pl="' + n + '"' + (pl ? ' checked' : '') + '>Sp.</label></span>'; }
+    var cur = String(c).toUpperCase(), bg = c === 'player' ? 'conic-gradient(' + PALETTE.join(',') + ',' + PALETTE[0] + ')' : cur;
+    return '<span class="cisel" style="--c:' + bg + '"><i></i><select data-f="' + n + '" title="Farbe (CI)">' + CI_WLED.map(function (x) {
+      return '<option value="' + x[0] + '"' + ((x[0] === 'player' ? c === 'player' : x[0] === cur) ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></span>'; };
   var rows = GROUP_ORDER.map(function (g) { return '<div class="grp meta" style="margin-top:14px">' + g + '</div>' + (groups[g] || []).map(function (k) {
     var e = CFG.wled.effects[k] || {};
     var mid = e.type === 'preset' ? (presets.length ? '<select data-f="ps">' + presets.map(function (p) { return '<option value="' + p[0] + '"' + (p[0] == e.ps ? ' selected' : '') + '>' + esc(p[1]) + '</option>'; }).join('') + '</select>'
@@ -169,7 +175,7 @@ function subWled() {
     var k = row.dataset.k, set = function (f, v) { var p = {wled: {effects: {}}}; p.wled.effects[k] = {}; p.wled.effects[k][f] = v; saveSettings(p); };
     $$('[data-f]', row).forEach(function (el) { el.onchange = function () {
       var f = el.dataset.f, v = el.type === 'checkbox' ? el.checked : (el.type === 'number' || f === 'fx' || f === 'ps') ? +el.value : el.value;
-      set(f, v); if (f === 'type' || f === 'on') subWled(); }; });
+      set(f, v); if (f === 'type' || f === 'on' || el.closest('.cisel')) subWled(); }; });
     $$('[data-pl]', row).forEach(function (el) { el.onchange = function () { set(el.dataset.pl, el.checked ? 'player' : '#DDF96A'); subWled(); }; });
     $('[data-test]', row).onclick = function () { setPreview(k, true);
       api('/api/wled/test/' + k, 'POST', {p: 0, color: (hostPlayer() || {}).color}).then(function (r) {

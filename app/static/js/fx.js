@@ -6,10 +6,13 @@ function pulse() { return '<div class="fx__pulse"><i></i><i></i><i></i></div>'; 
 function rep(n, s) { var o = ''; for (var i = 0; i < n; i++) o += s; return o; }
 function dartChipColor(n) { return n === 'BULL' || n === '25' || n[0] === 'T' ? '#FF6B5E' : n[0] === 'D' ? '#3DBB7A' : 'rgba(255,255,255,.75)'; }
 var STAR = function (c) { return '<svg class="fx__star ' + c + '" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 0C21 13 27 19 40 20C27 21 21 27 20 40C19 27 13 21 0 20C13 19 19 13 20 0Z" fill="#FFFFFF" stroke="#202020" stroke-width="1.5"></path></svg>'; };
-var TROPHY = '<svg viewBox="0 0 100 100" width="190" height="190" fill="none" stroke="#202020" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<path d="M30 20H16v6a14 14 0 0 0 14 14M70 20h14v6a14 14 0 0 1-14 14"></path>' +
-  '<path d="M30 12h40v26a20 20 0 0 1-40 0z" fill="#FFD66B"></path><path d="M38 18v18" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="4"></path>' +
-  '<path d="M50 58v12"></path><path d="M38 70h24v8H38z" fill="#FFD66B"></path><path d="M32 86h36" stroke-width="5"></path></svg>';
+var BEER = '<svg viewBox="0 0 100 100" width="190" height="190" fill="none" stroke="#202020" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M70 38h8a10 10 0 0 1 10 10v14a10 10 0 0 1-10 10h-8" stroke-width="5"></path><path d="M70 45h6a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5h-6"></path>' +
+  '<path d="M22 30h48v54a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6z" fill="#FFD66B"></path>' +
+  '<path d="M33 44v36M46 44v36M59 44v36" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="4"></path>' +
+  '<circle cx="40" cy="62" r="2" fill="#FFFFFF" stroke="none"></circle><circle cx="53" cy="72" r="1.6" fill="#FFFFFF" stroke="none"></circle><circle cx="64" cy="56" r="1.8" fill="#FFFFFF" stroke="none"></circle>' +
+  '<path d="M18 34c-4-7 2-15 10-13c1-8 12-11 18-5c5-6 16-4 18 4c8-2 13 6 9 13c-2 5-9 6-13 3c-4 4-11 4-14 0c-4 4-12 4-15-1c-5 3-11 2-13-1z" fill="#DDF96A"></path>' +
+  '<path d="M64 33c2 6-1 11 2 15c3 3 6 1 6-4" fill="#DDF96A"></path></svg>';
 
 /* Bauplan je Effekt: Klasse, Dauer, HTML aus Daten */
 var FXA = {
@@ -40,8 +43,8 @@ var FXA = {
   match_won: {cls: 'fx--winner', d: 4000, html: function (o) {
     var fw = function (n) { return '<div class="fw fw' + n + '">' + rep(10, '<span><i></i></span>') + '</div>'; };
     return '<div class="fx__rays"></div><div class="fx__glow"></div>' + fw(1) + fw(2) + fw(3) + fw(4) + '<div class="fx__confetti">' + rep(24, '<i></i>') + '</div>' +
-      '<div class="fx__trophy">' + TROPHY + '</div>' + STAR('s1') + STAR('s2') + STAR('s3') +
-      '<div class="fx__banner"><span>Champion der Ballerbude</span></div>' +
+      '<div class="fx__trophy">' + BEER + '</div>' + STAR('s1') + STAR('s2') + STAR('s3') +
+      '<div class="fx__banner"><span>Gewinner haben Bier verdient!</span></div>' +
       '<div class="fx__pulse" style="--pulse-c:' + o.color + '; --pulse-g:' + o.color + '66"><i></i><i></i><i></i></div>' +
       '<div class="fx__who">' + avatar(o.player, 200, true) + '<b>' + esc(o.name) + ' gewinnt</b><small>' + esc(o.sub || '') + '</small></div>' +
       '<div class="fx__actions"><button class="btn-cta" type="button" data-act="rematch">Revanche</button><button class="btn-glass" type="button" data-act="home">Zur Übersicht</button></div>'; }}
@@ -114,14 +117,14 @@ function fxData(key, ctx) {
     var oth = Math.max.apply(null, lw2.filter(function (_, k) { return k !== w; }).concat([0]));
     o.sub = 'Leg gewonnen' + (g.players.length > 1 ? ' · ' + lw2[w] + ' : ' + oth : '');
   }
-  if (key === 'game_start' && g) o.sub = modeLine(g) + ' · ' + g.players[0].name + ' beginnt';
+  if (key === 'game_start' && g) o.sub = modeLine(g) + ' · ' + g.players[g.state.current].name + ' beginnt';
   return o;
 }
 function rematch() {
   var g = ST && ST.game; if (!g) return;
   var ps = g.players.map(function (p) { return p.id != null ? p.id : p.name; });
-  var opts = JSON.parse(JSON.stringify(g.opts)); delete opts.seed;
-  api('/api/game', 'POST', {mode: g.mode, players: ps.slice(1).concat([ps[0]]), opts: opts}).then(function () { showPage('live'); });
+  var opts = JSON.parse(JSON.stringify(g.opts)); delete opts.seed; delete opts.first;
+  api('/api/game', 'POST', {mode: g.mode, players: ps, opts: opts}).then(function () { showPage('live'); });
 }
 
 /* Server-Ereignisse → Effekte (A + B), Rückgabe: Verzögerung für Score-Zählen */

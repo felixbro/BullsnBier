@@ -1,5 +1,5 @@
 """SQLite: Spieler, Spiele, Statistik."""
-import json, os, sqlite3, time
+import json, os, random, sqlite3, time
 from collections import Counter
 
 from .config import DATA
@@ -35,7 +35,8 @@ FIELDS = "id,name,COALESCE(spoken,'') spoken,COALESCE(nick,'') nick,color,COALES
 def players():
     out = [dict(r) for r in con.execute(f"SELECT {FIELDS} FROM players ORDER BY id")]
     for i, p in enumerate(out):
-        p["color"] = p["color"] or PALETTE[i % len(PALETTE)]
+        if (p["color"] or "").upper() not in PALETTE:
+            p["color"] = PALETTE[i % len(PALETTE)]
     return out
 
 
@@ -43,9 +44,17 @@ def player(pid):
     return next((p for p in players() if p["id"] == pid), None)
 
 
-def free_color():
+def free_color(taken=()):
+    """Zufällige CI-Farbe, bevorzugt eine noch nicht vergebene."""
     used = Counter(p["color"] for p in players())
-    return min(PALETTE, key=lambda c: (used[c], PALETTE.index(c)))
+    used.update(taken)
+    low = min(used[c] for c in PALETTE)
+    return random.choice([c for c in PALETTE if used[c] == low])
+
+
+def ci_color(c):
+    c = (c or "").strip().upper()
+    return c if c in PALETTE else None
 
 
 def add_player(data):
@@ -54,7 +63,7 @@ def add_player(data):
         raise ValueError("Name fehlt")
     cur = con.execute("INSERT OR IGNORE INTO players(name,created,spoken,nick,color,hand,seed) VALUES(?,?,?,?,?,?,?)",
                       (name, time.time(), (data.get("spoken") or "").strip(), (data.get("nick") or "").strip(),
-                       data.get("color") or free_color(), data.get("hand") or "R", (data.get("seed") or name).strip()))
+                       ci_color(data.get("color")) or free_color(), data.get("hand") or "R", (data.get("seed") or name).strip()))
     con.commit()
     if cur.rowcount == 0:
         raise ValueError("Name existiert schon")
@@ -67,6 +76,10 @@ def update_player(pid, data):
             v = str(data[k]).strip()
             if k == "name" and not v:
                 continue
+            if k == "color":
+                v = ci_color(v)
+                if not v:
+                    continue
             con.execute(f"UPDATE players SET {k}=? WHERE id=?", (v, pid))
     con.commit()
     return player(pid)

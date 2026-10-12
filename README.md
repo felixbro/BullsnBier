@@ -63,7 +63,7 @@ Python von python.org mit Haken „Add to PATH“. Zugriff von Handy/Tablet: Win
 ## Spiele
 
 X01 · Cricket (Standard / Cut Throat / No Score, Tactics) · Bermuda · Shanghai · Gotcha · Around the Clock · Round the World · Count Up · Random Checkout · Segment Training
-– Legs + Sets, Max. Runden, Bull 25/50 oder 50/50, Start: Reihenfolge / Zufällig / Bull-Off
+– Legs + Sets, Max. Runden, Bull 25/50 oder 50/50, Start: Reihum (erstes Spiel einer Runde zufällig, danach beginnt pro Spiel und pro Leg der Nächste, Reihenfolge bleibt) oder Bull-Off
 
 ## Einstellungen
 

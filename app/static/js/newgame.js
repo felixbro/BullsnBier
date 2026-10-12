@@ -30,7 +30,8 @@ var MODES = {
     ['end', 'Ende nach', [['darts', 'Darts'], ['hits', 'Treffern']]], ['count', 'Anzahl', []]]}
 };
 var MODE_NAMES = {};
-var setup = Object.assign({mode: 'x01', opts: {}, legs: 1, sets: 0, order: 'list'}, LOCAL.setup || {});
+var setup = Object.assign({mode: 'x01', opts: {}, legs: 1, sets: 0, order: 'auto'}, LOCAL.setup || {});
+if (setup.order !== 'bulloff') setup.order = 'auto';
 var picked = LOCAL.picked || [];
 
 function initNew(modes) {
@@ -74,14 +75,15 @@ function summary() {
   parts.push(picked.length + ' Spieler');
   $('#gameonSub').textContent = parts.join(' · ');
 }
+function guestColor(n) { var h = 0; n = n.toLowerCase(); for (var i = 0; i < n.length; i++) h += n.charCodeAt(i); return PALETTE[h % 8]; }
 function loadNew() {
   var ids = PLAYERS.map(function (p) { return p.id; });
   picked = picked.filter(function (id) { return typeof id === 'string' || ids.indexOf(id) >= 0; });
   var all = PLAYERS.map(function (p) { return {id: p.id, p: p}; }).concat(picked.filter(function (x) { return typeof x === 'string'; })
-    .map(function (n, i) { return {id: n, p: {name: n, seed: n, color: PALETTE[(PLAYERS.length + i) % 8]}, guest: true}; }));
+    .map(function (n) { return {id: n, p: {name: n, seed: n, color: guestColor(n)}, guest: true}; }));
   $('#pick').innerHTML = all.map(function (x) {
     var k = picked.indexOf(x.id);
-    return '<button type="button" class="pchip' + (k >= 0 ? ' on' : '') + (x.guest ? ' guest' : '') + '" data-id="' + esc(x.id) + '">' + avatar(x.p, 44) + esc(x.p.name) + '<span class="no">' + (k + 1) + '</span></button>';
+    return '<button type="button" class="pchip' + (k >= 0 ? ' on' : '') + (x.guest ? ' guest' : '') + '" data-id="' + esc(x.id) + '" style="--pc:' + esc(x.p.color || PALETTE[0]) + '">' + avatar(x.p, 44) + esc(x.p.name) + '</button>';
   }).join('') || '<p class="lead">Noch keine Spieler – unter „Spieler“ anlegen oder Gast hinzufügen.</p>';
   $$('#pick .pchip').forEach(function (b) { b.onclick = function () {
     var id = isNaN(+b.dataset.id) ? b.dataset.id : +b.dataset.id, k = picked.indexOf(id);
@@ -93,9 +95,9 @@ pageHooks['new'] = loadNew;
 $('#addGuest').onclick = function () { var n = $('#guest').value.trim(); if (n && picked.indexOf(n) < 0) picked.push(n); $('#guest').value = ''; storeSetup(); loadNew(); };
 $('#guest').onkeydown = function (e) { if (e.key === 'Enter') $('#addGuest').click(); };
 $('#startGame').onclick = function () {
-  if (!picked.length) return toast('Spieler wählen', 'Reihenfolge = Antippen', 'info');
+  if (!picked.length) return toast('Spieler wählen', 'Spieler antippen', 'info');
   var opts = Object.assign({}, modeOpts(), {legs: setup.legs, sets: setup.sets});
   preloadAvatars(PLAYERS.filter(function (p) { return picked.indexOf(p.id) >= 0; }));
-  api('/api/game', 'POST', {mode: setup.mode, players: picked, opts: opts, random_order: setup.order === 'random', bulloff: setup.order === 'bulloff'})
+  api('/api/game', 'POST', {mode: setup.mode, players: picked, opts: opts, bulloff: setup.order === 'bulloff'})
     .then(function () { showPage('live'); }, function (e) { toast('Spiel startet nicht', e && e.detail, 'warn'); });
 };

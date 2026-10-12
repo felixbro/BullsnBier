@@ -3,7 +3,11 @@
 /* Bulls'n'Bier – App-Layout. Nur Tokens aus bnb.css (Styleguide v01), keine neuen Farben/Radien. */
 html,body{overflow:hidden;}
 body{background:var(--mist);}
-.stage{position:absolute; left:0; top:0;}
+.stage{position:absolute; left:0; top:0; background:transparent; overflow:visible; --ox:0px; --oy:0px;}
+#fxroot .fx{overflow:visible;}
+#fxroot .fx .fx__veil{left:calc(var(--ox) * -1); top:calc(var(--oy) * -1); width:calc(100% + 2 * var(--ox)); height:calc(100% + 2 * var(--oy));}
+.bg{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0;}
+.pvstage{background:var(--mist); overflow:hidden;}
 a{color:inherit;}
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);}
 .meta{font-size:var(--fs-label); color:var(--ink-2);}
@@ -131,13 +135,11 @@ button.hstatus{cursor:pointer;}
 .manual{position:absolute; left:0; right:0; bottom:0; z-index:3; padding:16px; border-radius:var(--r-card); border:1px solid var(--glass-line);
   display:flex; flex-direction:column; gap:10px; box-shadow:var(--shadow-fx);}
 .manual .seg button{height:44px;}
-.manual .nums{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
-.manual .nums button{height:44px; border-radius:var(--r-nav); border:1px solid var(--glass-line); background:rgba(255,255,255,.6); font-size:var(--fs-body); transition:var(--t-surface);}
-.manual .nums button:hover{background:var(--glass-4);}
 .manual .sel-info{font-size:var(--fs-label); color:var(--ink-2);}
 .manual .prev{display:flex; gap:6px; flex-wrap:wrap;}
 .manual .prev button{height:36px; padding:0 12px; border-radius:var(--r-nav); border:1px solid var(--glass-line); background:rgba(255,255,255,.6);}
 .manual .prev button.sel{background:var(--ink); color:#fff;}
+.manual .prev .done{margin-left:auto; background:var(--lime); border-color:transparent; font-weight:600;}
 .plist{position:absolute; left:0; right:0; top:800px; height:136px; display:grid; grid-auto-flow:column; grid-auto-columns:calc((100% - 60px) / 6); gap:var(--gap-s); overflow-x:auto;}
 .plist .pcard{position:relative; height:136px; min-width:0;}
 .pcard .top{display:flex; align-items:center; gap:10px; min-width:0;}
@@ -168,11 +170,9 @@ button.hstatus{cursor:pointer;}
 .pchip{display:inline-flex; align-items:center; gap:10px; height:56px; padding:0 14px 0 6px; border-radius:var(--r-pill);
   background:rgba(255,255,255,.55); border:1px solid var(--glass-line); font-size:var(--fs-body); transition:var(--t-surface);}
 .pchip:hover{background:var(--glass-3);}
-.pchip.on{background:var(--glass-4); box-shadow:var(--shadow-tab);}
+.pchip.on{background:var(--pc); color:var(--ink); box-shadow:var(--shadow-tab);}
 .pchip.guest{border:1px dashed var(--slate-2); background:transparent;}
-.pchip.guest.on{background:var(--glass-4);}
-.pchip .no{width:24px; height:24px; border-radius:50%; background:var(--ink); color:#fff; font-size:var(--fs-micro); display:flex; align-items:center; justify-content:center;}
-.pchip:not(.on) .no{display:none;}
+.pchip.guest.on{background:var(--pc); border-color:transparent;}
 .pchip:not(.on){color:var(--ink-2);}
 .pick-card .guest .row input{flex:1; height:52px; border-radius:var(--r-field); padding:0 16px; border:1px solid rgba(255,255,255,.95); background:rgba(255,255,255,.65); font-size:17px;}
 .pick-card .guest .btn-icon{height:52px; width:52px;}
@@ -202,7 +202,12 @@ button.hstatus{cursor:pointer;}
 .pform .btns{margin-top:auto; display:grid; grid-template-columns:1fr 1.6fr; gap:var(--gap-s);}
 .pform .btns .btn-cta, .pform .btns .btn-glass{height:60px; justify-content:center; font-size:var(--fs-body);}
 .pform .row .field{flex:1;}
-.pform .seedrow{display:flex; gap:8px;} .pform .seedrow input{flex:1;}
+.avpick{display:flex; gap:6px;}
+.avpick button{width:62px; height:62px; border-radius:var(--r-tile); border:1px solid var(--glass-line); background:rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center; padding:0; transition:var(--t-surface);}
+.avpick button:hover{background:var(--glass-4);}
+.avpick button.on{box-shadow:0 0 0 3px #fff, 0 0 0 5px var(--ink); background:#fff;}
+.avpick .more{flex-direction:column; gap:2px; font-size:24px; line-height:1;} .avpick .more small{font-size:var(--fs-micro); color:var(--ink-2);}
+.swatches .rnd{width:auto; padding:0 16px; background:rgba(255,255,255,.6); border:1px solid var(--glass-line); font-size:var(--fs-label); font-weight:600;}
 .pform .del{align-self:flex-start; height:44px;}
 
 /* 12 Statistik */
@@ -277,7 +282,7 @@ button.hstatus{cursor:pointer;}
 .vrow.on{background:var(--glass-4); box-shadow:var(--shadow-tab);}
 .vrow .meta{margin-left:auto;}
 .vrow .btn-glass{height:40px;}
-.fxrow{display:grid; grid-template-columns:196px 100px 150px 80px 80px 66px 66px 66px 66px 44px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid rgba(32,32,32,.06); font-size:var(--fs-meta);}
+.fxrow{display:grid; grid-template-columns:196px 100px 150px 128px 128px 66px 66px 66px 66px 44px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid rgba(32,32,32,.06); font-size:var(--fs-meta);}
 .fxrow select, .fxrow input[type=number]{height:40px; border-radius:var(--r-nav); border:1px solid rgba(255,255,255,.95); background:rgba(255,255,255,.65); padding:0 8px; min-width:0; font-size:var(--fs-meta);}
 .fxrow .col{display:flex; align-items:center; gap:6px;}
 .fxrow input[type=color]{width:36px; height:32px; padding:0; border:0; background:none; border-radius:var(--r-nav);}
@@ -303,3 +308,8 @@ button.hstatus{cursor:pointer;}
 .pform .row .field{min-width:0;} .pform .field input{width:100%; min-width:0;}
 .palette span{white-space:nowrap; font-size:var(--fs-micro);}
 #p-cams .page-head .row.right{margin-left:var(--gap-l);}
+
+/* WLED-Farbwahl nur aus CI-Farben */
+.cisel{position:relative; display:flex; align-items:center;}
+.cisel i{position:absolute; left:8px; width:18px; height:18px; border-radius:50%; background:var(--c); box-shadow:inset 0 0 0 1px rgba(32,32,32,.25); pointer-events:none;}
+.cisel select{width:100%; padding-left:32px;}

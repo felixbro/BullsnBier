@@ -30,8 +30,8 @@ function loadStart() {
     $('#heroActions').innerHTML = acts;
     if (last) $('#btnRevanche').onclick = function () {
       var ps = last.players.map(function (n, i) { return last.player_ids[i] != null ? last.player_ids[i] : n; });
-      var o = JSON.parse(JSON.stringify(last.opts)); delete o.seed;
-      api('/api/game', 'POST', {mode: last.mode, players: ps.slice(1).concat([ps[0]]), opts: o}).then(function () { showPage('live'); });
+      var o = JSON.parse(JSON.stringify(last.opts)); delete o.seed; delete o.first;
+      api('/api/game', 'POST', {mode: last.mode, players: ps, opts: o}).then(function () { showPage('live'); });
     };
     var byId = {}; PLAYERS.forEach(function (p) { byId[p.id] = p; });
     $('#dayRank').innerHTML = day.rank.length ? day.rank.slice(0, 6).map(function (x, i) {

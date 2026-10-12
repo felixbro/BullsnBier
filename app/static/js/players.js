@@ -1,7 +1,12 @@
 /* 11 · Spieler der Bude: Raster + Formular (Name, Ansage-Name, Spitzname, Farbe, Avatar, Wurfhand) */
 var editId = null, draft = null, CARDS = [];
 function blank() { var used = PLAYERS.map(function (p) { return p.color; });
-  return {name: '', spoken: '', nick: '', seed: '', hand: 'R', color: PALETTE.filter(function (c) { return used.indexOf(c) < 0; })[0] || PALETTE[0]}; }
+  return {name: '', spoken: '', nick: '', seed: '', hand: 'R', color: randColor(used)}; }
+/* Zufällige CI-Farbe, bevorzugt eine noch freie */
+function randColor(avoid) { var free = PALETTE.filter(function (c) { return avoid.indexOf(c) < 0; }); free = free.length ? free : PALETTE;
+  return free[Math.floor(Math.random() * free.length)]; }
+function rndSeed(base) { return (base || 'Spieler') + '-' + Math.random().toString(36).slice(2, 6); }
+function seedChoices(d) { var cur = d.seed || d.name || 'Spieler', o = [cur]; while (o.length < 6) o.push(rndSeed(d.name)); return o; }
 function loadPlayers() {
   api('/api/players/cards').then(function (cards) {
     CARDS = cards;
@@ -35,23 +40,31 @@ function renderForm() {
     '<label class="field"><span>Spitzname</span><input id="f_nick" value="' + esc(d.nick) + '" placeholder="z. B. Der Wirt"></label></div>' +
     '<label class="field"><span>Ansage-Name für die Sprachausgabe</span><input id="f_spoken" value="' + esc(d.spoken) + '" placeholder="wie es klingen soll, z. B. Ma-rei"></label>' +
     '<div class="field"><span>Spielerfarbe · Anzeige und WLED</span><div class="swatches">' + PALETTE.map(function (c) {
-      return '<button type="button" data-c="' + c + '" style="--c:' + c + '" class="' + (c === d.color ? 'on' : '') + '" aria-label="Farbe ' + c + '"></button>'; }).join('') + '</div></div>' +
-    '<div class="field"><span>Avatar-Motiv (DiceBear)</span><div class="seedrow"><input id="f_seed" value="' + esc(d.seed) + '" placeholder="leer = Name">' +
-    '<button class="btn-icon" type="button" id="pfDice" aria-label="Neu würfeln">⟳</button></div></div>' +
+      return '<button type="button" data-c="' + c + '" style="--c:' + c + '" class="' + (c === d.color ? 'on' : '') + '" aria-label="Farbe ' + c + '"></button>'; }).join('') +
+      '<button type="button" class="rnd" id="pfRndColor">Zufall</button></div></div>' +
+    '<div class="field"><span>Avatar · antippen zum Wählen, Vorschau oben</span><div class="avpick" id="avPick"></div></div>' +
     '<div class="field"><span>Wurfhand</span><div class="seg" id="f_hand"><button data-v="R">Rechts</button><button data-v="L">Links</button></div></div>' +
     (editId != null ? '<button class="btn-glass del" type="button" id="pfDel">Spieler löschen</button>' : '') +
     '<div class="btns"><button class="btn-glass" type="button" id="pfCancel">Abbrechen</button><button class="btn-cta" type="submit">Spieler speichern</button></div>';
   var upd = function () {
-    d.name = $('#f_name').value; d.nick = $('#f_nick').value; d.spoken = $('#f_spoken').value; d.seed = $('#f_seed').value;
+    d.name = $('#f_name').value; d.nick = $('#f_nick').value; d.spoken = $('#f_spoken').value;
     $('#pfName').textContent = d.name || 'Name';
     $('#pfSay').textContent = 'Ansage: „' + cleanSpeech(fill(T.next, {name: d.spoken || d.name || 'Name'})) + '“';
   };
   ['f_name', 'f_nick', 'f_spoken'].forEach(function (k) { $('#' + k).oninput = upd; });
-  $('#f_seed').onchange = function () { upd(); $('#pfAv').innerHTML = avatar({color: d.color, seed: d.seed || d.name}, 136, true); };
-  $('#f_name').onchange = $('#f_seed').onchange;
-  $('#pfDice').onclick = function () { d.seed = (d.name || 'Spieler') + '-' + Math.random().toString(36).slice(2, 6); $('#f_seed').value = d.seed; $('#f_seed').onchange(); };
-  $$('.swatches button', f).forEach(function (b) { b.onclick = function () { d.color = b.dataset.c;
-    $$('.swatches button', f).forEach(function (x) { x.classList.toggle('on', x === b); }); $('#pfAv').innerHTML = avatar({color: d.color, seed: d.seed || d.name}, 136, true); }; });
+  var big = function () { $('#pfAv').innerHTML = avatar({color: d.color, seed: d.seed || d.name || 'Spieler'}, 136, true); };
+  var choices = d.choices = d.choices || seedChoices(d);
+  var pick = function () {
+    $('#avPick').innerHTML = choices.map(function (sd, i) { return '<button type="button" data-i="' + i + '" class="' + (sd === (d.seed || d.name || 'Spieler') ? 'on' : '') + '">' +
+      avatar({color: d.color, seed: sd}, 52) + '</button>'; }).join('') + '<button type="button" class="more" id="pfMore" aria-label="Neue Vorschläge">⟳<small>Neue</small></button>';
+    $$('#avPick [data-i]').forEach(function (b) { b.onclick = function () { d.seed = choices[+b.dataset.i]; big(); pick(); }; });
+    $('#pfMore').onclick = function () { choices = d.choices = [d.seed || d.name || 'Spieler'].concat(seedChoices({name: d.name}).slice(1)); pick(); };
+  };
+  pick();
+  $('#f_name').onchange = function () { upd(); if (!d.seed) { choices[0] = d.name || 'Spieler'; big(); pick(); } };
+  var setColor = function (c) { d.color = c; $$('.swatches [data-c]', f).forEach(function (x) { x.classList.toggle('on', x.dataset.c === c); }); big(); pick(); };
+  $$('.swatches [data-c]', f).forEach(function (b) { b.onclick = function () { setColor(b.dataset.c); }; });
+  $('#pfRndColor').onclick = function () { setColor(randColor([d.color])); };
   segment($('#f_hand'), d.hand, function (v) { d.hand = v; });
   $('#pfPlay').onclick = function () { speak(fill(T.next, {name: d.spoken || d.name}), true); };
   $('#pfCancel').onclick = function () { edit(null); };

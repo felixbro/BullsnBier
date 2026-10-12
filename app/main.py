@@ -181,6 +181,39 @@ def turn_calls(g):
     return calls
 
 
+# ---------------- Reihenfolge ----------------
+ROT_FILE = os.path.join(config.DATA, "rotation.json")
+
+
+def _pkey(p):
+    return f"id:{p['id']}" if p.get("id") is not None else f"g:{p['name'].lower()}"
+
+
+def order_players(ps, opts, bulloff=False):
+    """Erstes Spiel einer Runde: Zufallsreihenfolge. Danach bleibt die Reihenfolge gleich,
+    es beginnt aber jedes Spiel der Nächste (in Legs rotiert die Engine selbst weiter)."""
+    try:
+        with open(ROT_FILE, encoding="utf-8") as f:
+            rot = json.load(f)
+    except Exception:
+        rot = {}
+    key = "|".join(sorted(_pkey(p) for p in ps))
+    r = rot.get(key)
+    by = {_pkey(p): p for p in ps}
+    if r and set(r["order"]) == set(by):
+        ps = [by[k] for k in r["order"]]
+        first = r["next"] % len(ps)
+    else:
+        random.shuffle(ps)
+        first = 0
+    opts = {**opts, "first": first}
+    if not bulloff:
+        rot[key] = {"order": [_pkey(p) for p in ps], "next": (first + 1) % len(ps)}
+        with open(ROT_FILE, "w", encoding="utf-8") as f:
+            json.dump(rot, f)
+    return ps, opts
+
+
 # ---------------- Bull-Off ----------------
 async def bulloff_dart(s, pos):
     b = S["bulloff"]
@@ -199,10 +232,8 @@ async def bulloff_dart(s, pos):
         calls.append({"k": "bulloff", "p": top[0]})
         return await emit(calls)
     w = top[0]
-    ps = b["players"]
     S["bulloff"] = None
-    S["bulloff_names"] = ps
-    await start_game(b["mode"], ps[w:] + ps[:w], b["opts"], calls + [{"k": "bulloff_win", "p": 0}], takeout=True)
+    await start_game(b["mode"], b["players"], {**b["opts"], "first": w}, calls + [{"k": "bulloff_win", "p": w}], takeout=True)
 
 
 async def start_game(mode, ps, opts, pre_calls=None, takeout=False):
@@ -211,7 +242,7 @@ async def start_game(mode, ps, opts, pre_calls=None, takeout=False):
     S["await_takeout"] = takeout
     if detector and not takeout:
         detector.reset_reference()
-    await emit((pre_calls or []) + [{"k": "start", "p": 0}])
+    await emit((pre_calls or []) + [{"k": "start", "p": S["game"].state["current"]}])
 
 
 # ---------------- Spiel-Logik ----------------
@@ -327,14 +358,15 @@ async def api_game(body: dict):
     used = {p.get("color") for p in ps if p.get("color")}
     for p in ps:  # Gäste: freie Spielerfarbe, Farbe folgt dem Spieler
         if not p.get("color"):
-            p["color"] = next((c for c in db.PALETTE if c not in used), db.PALETTE[len(used) % 8])
+            pref = db.PALETTE[sum(map(ord, p["name"].lower())) % 8]  # wie die Gast-Pille in „Neues Spiel“
+            free = [c for c in db.PALETTE if c not in used]
+            p["color"] = pref if pref not in used else random.choice(free) if free else random.choice(db.PALETTE)
             used.add(p["color"])
     mode = body.get("mode", "x01")
     if mode not in RULES:
         raise HTTPException(400, "Unbekannter Modus")
     opts = body.get("opts") or {}
-    if body.get("random_order"):
-        random.shuffle(ps)
+    ps, opts = order_players(ps, opts, body.get("bulloff"))
     S["await_takeout"] = False
     if detector:
         detector.reset_reference()
