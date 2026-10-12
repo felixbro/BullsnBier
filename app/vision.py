@@ -122,12 +122,13 @@ def fuse(points):
 def open_capture(src):
     """Plattformgerecht öffnen: Windows = DirectShow (Index 0,1,2 …), Linux = V4L2 (/dev/videoX)."""
     s = str(src).strip()
-    if sys.platform.startswith("win"):
-        idx = int(s) if s.isdigit() else s
-        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+    if sys.platform.startswith("win") and s.isdigit():
+        cap = cv2.VideoCapture(int(s), cv2.CAP_DSHOW)
         if not cap.isOpened():
-            cap = cv2.VideoCapture(idx, cv2.CAP_MSMF)
+            cap = cv2.VideoCapture(int(s), cv2.CAP_MSMF)
         return cap
+    if sys.platform.startswith("win"):
+        return cv2.VideoCapture(s)  # RTSP/HTTP-Stream oder Videodatei
     if s.isdigit():
         return cv2.VideoCapture(int(s), cv2.CAP_V4L2)
     if s.startswith("/dev/"):
