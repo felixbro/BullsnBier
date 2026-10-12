@@ -6,7 +6,6 @@ Effekt-IDs (WLED ≥ 0.14): 0 Solid · 1 Blink · 2 Breathe · 3 Wipe · 9 Rainb
 Statt Effekt kann je Ereignis auch ein WLED-Preset (ps) gewählt werden."""
 import asyncio, json, urllib.request
 
-from . import settings
 
 # key: (Bezeichnung, Gruppe)
 EVENTS = {
@@ -46,35 +45,35 @@ def E(fx, c1, c2="#000000", dur=1.5, sx=128, ix=128, bri=200, on=True):
 
 # dur = Sekunden, danach zurück zum Grundzustand · dur 0 = bleibt (Grundzustand)
 DEFAULTS = {
-    "idle":         E(2, "#ffffff", bri=60, dur=0, sx=60),
-    "game_start":   E(3, "#1f9d5c", dur=1.5, sx=200),
-    "bulloff":      E(40, "#e2412f", dur=0, sx=180),
+    "idle":         E(2, "#7FDDEB", bri=60, dur=0, sx=60),
+    "game_start":   E(3, "#DDF96A", dur=1.4, sx=200),
+    "bulloff":      E(40, "#FF6B5E", "#3DBB7A", dur=0, sx=180),
     "next_player":  E(0, "player", dur=0),
     "checkout":     E(2, "player", dur=0, sx=150),
-    "takeout":      E(28, "#ffffff", "player", dur=0, sx=160),
+    "takeout":      E(28, "#7FDDEB", "player", dur=0, sx=160),
     "dart_single":  E(0, "#ffffff", dur=0.4, on=False),
-    "dart_double":  E(1, "#1f9d5c", dur=0.8, sx=220),
-    "dart_triple":  E(1, "#e2412f", dur=0.8, sx=220),
-    "dart_bull":    E(23, "#e2412f", "#1f9d5c", dur=1.2, sx=200),
-    "dart_miss":    E(12, "#ff7a00", dur=1.0, sx=200),
-    "score_100":    E(28, "#f2c14e", dur=2.0, sx=200),
-    "score_140":    E(41, "#f2c14e", dur=2.5, sx=200),
-    "score_180":    E(24, "#ffffff", dur=4.0, sx=220),
-    "score_low":    E(12, "#555555", dur=1.0, on=False),
-    "bust":         E(23, "#e2412f", dur=2.0, sx=230),
-    "halved":       E(1, "#e2412f", dur=1.5),
-    "gotcha":       E(1, "#a24bff", dur=1.5, sx=220),
-    "shanghai":     E(24, "#ffffff", dur=4.0),
-    "high_finish":  E(42, "#f2c14e", dur=4.0),
-    "leg_won":      E(42, "player", dur=4.0),
-    "match_won":    E(9, "#ffffff", dur=0, sx=180),
-    "dart_unknown": E(1, "#ff7a00", dur=1.5, sx=230),
-    "cal_warn":     E(1, "#f2c14e", "#000000", dur=2.0, sx=200),
-    "cam_error":    E(1, "#e2412f", "#0040ff", dur=0, sx=160),
-    "paused":       E(2, "#0040ff", bri=60, dur=0),
+    "dart_double":  E(1, "#3DBB7A", dur=0.8, sx=220),
+    "dart_triple":  E(1, "#FF6B5E", dur=1.2, sx=220),
+    "dart_bull":    E(23, "#3DBB7A", "#FF6B5E", dur=1.4, sx=200),
+    "dart_miss":    E(12, "#BDC8CB", dur=1.0, sx=200),
+    "score_100":    E(28, "#DDF96A", dur=1.5, sx=200),
+    "score_140":    E(41, "#FF6B5E", "#DDF96A", dur=2.0, sx=200),
+    "score_180":    E(25, "#DDF96A", dur=2.4, sx=220),
+    "score_low":    E(12, "#BDC8CB", dur=1.0, on=False),
+    "bust":         E(23, "#FF6B5E", dur=1.5, sx=230),
+    "halved":       E(1, "#FF6B5E", dur=1.5),
+    "gotcha":       E(1, "#FF6B5E", "player", dur=1.5, sx=220),
+    "shanghai":     E(24, "#FF6B5E", dur=1.6),
+    "high_finish":  E(42, "#3DBB7A", "#DDF96A", dur=1.6),
+    "leg_won":      E(42, "player", dur=2.2),
+    "match_won":    E(9, "#DDF96A", dur=0, sx=180),
+    "dart_unknown": E(1, "#FF6B5E", dur=1.5, sx=230),
+    "cal_warn":     E(1, "#7FDDEB", "#FF6B5E", dur=2.0, sx=200),
+    "cam_error":    E(1, "#FF6B5E", "#7FDDEB", dur=0, sx=160),
+    "paused":       E(2, "#FF6B5E", bri=60, dur=0),
 }
 
-PLAYER_COLORS = ["#2f80ed", "#e2412f", "#1f9d5c", "#f2c14e", "#a24bff", "#ff7a00", "#00c2c7", "#ff4fa3"]
+PLAYER_COLORS = ["#6FA8FF", "#FF7A6B", "#5FCB92", "#FFD66B", "#B79CFF", "#FFB27A", "#7FDDEB", "#FF8FC2"]  # --p1 … --p8
 
 
 def hex_rgb(h):
@@ -89,12 +88,12 @@ class Wled:
         self.last_error = None
 
     def cfg(self):
+        from . import settings  # spät importieren (settings nutzt EVENTS/DEFAULTS von hier)
         return settings.load()["wled"]
 
     def color(self, c, ctx):
         if c == "player":
-            cols = settings.load()["display"]["player_colors"]
-            return hex_rgb(cols[ctx.get("p", 0) % len(cols)])
+            return hex_rgb(ctx.get("color") or PLAYER_COLORS[ctx.get("p", 0) % len(PLAYER_COLORS)])
         return hex_rgb(c)
 
     def payload(self, key, ctx, force=False):
@@ -147,26 +146,29 @@ class Wled:
             await self.send(self.payload(*self.base))
 
     async def test(self, key, ctx, base):
-        """Effekt testweise zeigen – auch Grundzustände kehren nach 3 s zurück."""
+        """Vorschau: Effekt zeigen, nach Effektdauer (höchstens 10 s) zurück zum Grundzustand –
+        ist WLED in der App aus, gehen die LEDs danach aus."""
         self.base = base
         if not self.cfg()["effects"].get(key):
             return
         self._cancel()
         await self.send(self.payload(key, ctx, force=True))
-        dur = float(self.cfg()["effects"][key].get("dur", 0)) or 3.0
-        self.timer = asyncio.create_task(self._revert(dur))
+        dur = min(10.0, float(self.cfg()["effects"][key].get("dur", 0)) or 10.0)
+        self.timer = asyncio.create_task(self._revert(dur, off_if_disabled=True))
 
     def _cancel(self):
         if self.timer and not self.timer.done():
             self.timer.cancel()
         self.timer = None
 
-    async def _revert(self, dur):
+    async def _revert(self, dur, off_if_disabled=False):
         try:
             await asyncio.sleep(dur)
             self.timer = None
             if self.cfg()["enabled"]:
-                await self.send(self.payload(*self.base))
+                await self.send(self.payload(*self.base) or {"on": False})
+            elif off_if_disabled:
+                await self.send({"on": False})
         except asyncio.CancelledError:
             pass
 

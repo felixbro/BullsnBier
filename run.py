@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DartCam starten.
+"""Bulls'n'Bier (DartCam) starten.
 
   python run.py              # Live (Kameras laut config.env)
   python run.py --sim        # Simulator ohne Kameras
@@ -12,7 +12,7 @@ if sys.stdout is None or sys.stderr is None:  # pythonw (Autostart ohne Konsole)
     sys.stdout = sys.stdout or _log
     sys.stderr = sys.stderr or _log
 
-p = argparse.ArgumentParser(description="DartCam")
+p = argparse.ArgumentParser(description="Bulls'n'Bier")
 p.add_argument("--sim", action="store_true", help="Simulator-Modus ohne Kameras")
 p.add_argument("--host", default=None, help="Bind-Adresse (Standard 0.0.0.0)")
 p.add_argument("--port", type=int, default=None, help="Port (Standard 8090)")
@@ -60,5 +60,5 @@ try:
     ip = socket.gethostbyname(socket.gethostname())
 except Exception:
     ip = "localhost"
-print(f"\n  DartCam {'SIMULATOR' if config.SIM else 'LIVE'}  →  http://localhost:{port}   (im LAN: http://{ip}:{port})\n")
+print(f"\n  Bulls'n'Bier {'SIMULATOR' if config.SIM else 'LIVE'}  →  http://localhost:{port}   (im LAN: http://{ip}:{port})\n")
 uvicorn.run("app.main:app", host=host, port=port, log_level="warning")

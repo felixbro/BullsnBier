@@ -514,7 +514,8 @@ class Game:
     def replay(self):
         n, R, o = len(self.players), self.rules, self.opts
         st = {"leg": 0, "set": 0, "leg_starter": 0, "current": 0, "legs_won": [0] * n,
-              "sets_won": [0] * n, "winner": None, "last_turn": None, "last_by_player": [None] * n}
+              "sets_won": [0] * n, "winner": None, "last_turn": None, "last_by_player": [None] * n,
+              "leg_log": []}
         self._new_leg(st)
         for ti, t in enumerate(self.turns):
             st["_ti"] = ti
@@ -557,6 +558,7 @@ class Game:
 
     def _leg_won(self, st, w):
         n, o = len(self.players), self.opts
+        st["leg_log"].append(w)
         st["legs_won"][w] += 1
         sets, legs = int(o["sets"]), int(o["legs"])
         if sets:

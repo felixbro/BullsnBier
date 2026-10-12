@@ -4,7 +4,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import Response, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, board, db, settings, tts
+from . import config, board, db, settings, tts, avatars
 from .games import Game, MODE_NAMES, RULES, finishable
 from .effects import wled, EVENTS
 
@@ -27,12 +27,13 @@ async def lifespan(_app):
         detector = Detector(config.CAMERAS, on_detector_event)
         detector.start()
     mon = asyncio.create_task(monitor())
+    warm_speech()
     await emit([])
     yield
     mon.cancel()
 
 
-app = FastAPI(title="DartCam", lifespan=lifespan)
+app = FastAPI(title="Bulls'n'Bier", lifespan=lifespan)
 
 
 # ---------------- Zustand → Clients ----------------
@@ -114,6 +115,17 @@ def base_state():
     return ("next_player", {"p": p})
 
 
+def pcolor(i):
+    ps = S["game"].players if S["game"] else (S["bulloff"]["players"] if S["bulloff"] else [])
+    return ps[i].get("color") if i is not None and 0 <= i < len(ps) else None
+
+
+def with_color(ctx):
+    if ctx and "p" in ctx:
+        return {**ctx, "color": pcolor(ctx["p"])}
+    return ctx
+
+
 async def emit(calls, **extra):
     keys = [k for k in (call_fx(c) for c in calls) if k]
     trig = min(keys, key=PRIO.index) if keys else None
@@ -126,7 +138,7 @@ async def emit(calls, **extra):
         trig = None  # Sieger ist Grundzustand (bleibt bis zum nächsten Spiel)
     fx = {"trigger": trig, "ctx": ctx, "base": base[0], "base_ctx": base[1]}
     await broadcast(state_msg(calls, fx, **extra))
-    await wled.update(base, trig, ctx)
+    await wled.update((base[0], with_color(base[1])), trig, with_color(ctx))
 
 
 # ---------------- Caller-Events ----------------
@@ -248,7 +260,8 @@ async def _on_ev(ev, source="cam"):
     if ev["type"] == "dart":
         if ev.get("spread", 0) > CAL_WARN_MM:
             await broadcast({"type": "warn", "msg": f"Kameras weichen {ev['spread']:.0f} mm ab – Kalibrierung prüfen"})
-            await wled.update(base_state(), "cal_warn", {})
+            b = base_state()
+            await wled.update((b[0], with_color(b[1])), "cal_warn", {})
         await handle_dart(ev["score"], [ev["x"], ev["y"]], source)
     elif ev["type"] == "takeout":
         await handle_takeout()
@@ -306,11 +319,16 @@ async def api_game(body: dict):
     known = {p["id"]: p for p in db.players()}
     for p in body.get("players", []):
         if isinstance(p, int) and p in known:
-            ps.append(known[p])
+            ps.append(dict(known[p]))
         elif isinstance(p, str) and p.strip():
-            ps.append({"id": None, "name": p.strip(), "spoken": ""})
+            ps.append({"id": None, "name": p.strip(), "spoken": "", "seed": p.strip(), "guest": True})
     if not ps:
         raise HTTPException(400, "Keine Spieler")
+    used = {p.get("color") for p in ps if p.get("color")}
+    for p in ps:  # Gäste: freie Spielerfarbe, Farbe folgt dem Spieler
+        if not p.get("color"):
+            p["color"] = next((c for c in db.PALETTE if c not in used), db.PALETTE[len(used) % 8])
+            used.add(p["color"])
     mode = body.get("mode", "x01")
     if mode not in RULES:
         raise HTTPException(400, "Unbekannter Modus")
@@ -320,6 +338,7 @@ async def api_game(body: dict):
     S["await_takeout"] = False
     if detector:
         detector.reset_reference()
+    warm_players(ps, mode, opts)
     if body.get("bulloff") and len(ps) > 1:
         S["game"] = None
         S["bulloff"] = {"players": ps, "order": list(range(len(ps))), "throws": [], "round": 1,
@@ -396,14 +415,30 @@ def api_players():
     return db.players()
 
 
+@app.get("/api/players/cards")
+def api_player_cards():
+    return db.player_cards()
+
+
 @app.post("/api/players")
 def api_add_player(body: dict):
-    return db.add_player(body["name"])
+    try:
+        return db.add_player(body)
+    except ValueError as ex:
+        raise HTTPException(400, str(ex))
 
 
 @app.put("/api/players/{pid}")
 def api_upd_player(pid: int, body: dict):
-    return db.update_player(pid, body.get("name"), body.get("spoken"))
+    return db.update_player(pid, body)
+
+
+@app.get("/api/avatar")
+async def api_avatar(seed: str):
+    data = await asyncio.to_thread(avatars.get, seed)
+    if not data:
+        raise HTTPException(404)
+    return Response(data, media_type="image/svg+xml", headers={"Cache-Control": "max-age=31536000"})
 
 
 @app.delete("/api/players/{pid}")
@@ -413,8 +448,18 @@ def api_del_player(pid: int):
 
 
 @app.get("/api/stats/{pid}")
-def api_stats(pid: int):
-    return db.player_stats(pid)
+def api_stats(pid: int, period: str = "all"):
+    return db.player_stats(pid, period)
+
+
+@app.get("/api/today")
+def api_today():
+    return db.today()
+
+
+@app.get("/api/records")
+def api_records():
+    return db.records()
 
 
 @app.get("/api/games")
@@ -490,6 +535,8 @@ def api_settings():
 async def api_settings_save(body: dict):
     data = settings.save(body)
     await broadcast({"type": "settings", "settings": data})
+    if "caller" in body or "texts" in body:
+        warm_speech()
     if "wled" in body:
         await wled.update(base_state(), None, {}, force=True)
     return data
@@ -514,7 +561,8 @@ async def api_wled_test(key: str, body: dict | None = None):
         raise HTTPException(404)
     p = (body or {}).get("p", 0)
     await broadcast({"type": "fx_test", "fx": {"trigger": key, "ctx": {"p": p}}})
-    await wled.test(key, {"p": p}, base_state())
+    b = base_state()
+    await wled.test(key, {"p": p, "color": (body or {}).get("color") or pcolor(p)}, (b[0], with_color(b[1])))
     return {"ok": wled.last_error is None, "error": wled.last_error}
 
 
@@ -549,7 +597,37 @@ async def api_tts(text: str, voice: str = "", rate: float = 1.0):
 
 @app.get("/api/tts/voices")
 def api_tts_voices():
-    return tts.status()
+    return {**tts.status(), "warm": tts.warm_status()}
+
+
+def _voice_cfg():
+    c = settings.load()
+    cc = c["caller"]
+    return c, cc["piper_voice"].get(cc["lang"], ""), float(cc["rate"])
+
+
+def warm_speech():
+    """Häufige Ansagen (Felder, Zahlen) vorab erzeugen, damit Piper im Spiel sofort spricht."""
+    c, voice, rate = _voice_cfg()
+    if c["caller"]["engine"] != "piper":
+        return
+    T = c["texts"][c["caller"]["lang"]]
+    tts.warm(tts.base_phrases(T), voice, rate, prio=1)
+    warm_players(db.players(), "none", {}, prio_hi=4)
+
+
+def warm_players(ps, mode, opts, prio_hi=2, prio_lo=6):
+    c, voice, rate = _voice_cfg()
+    if c["caller"]["engine"] != "piper":
+        return
+    T = c["texts"][c["caller"]["lang"]]
+    names = [(p.get("spoken") or "").strip() or p["name"] for p in ps]
+    scores = [n for n in range(2, 171) if finishable(n, opts.get("out", "double"))] if mode in ("x01", "random_checkout") else []
+    hi, _ = tts.player_phrases(T, names, [])
+    key = "next_remaining" if len(ps) > 1 else "remaining"
+    lo = [tts._fill(T[key], name=n, score=sc) for sc in scores for n in names]  # kleine Reste zuerst
+    tts.warm(hi, voice, rate, prio=prio_hi)
+    tts.warm(lo, voice, rate, prio=prio_lo)
 
 
 @app.post("/api/tts/download")

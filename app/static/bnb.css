@@ -1,0 +1,916 @@
+/* ====================================================================
+   BULLS'N'BIER – EXPORT-STYLESHEET
+   Stand: Design-Canvas "Konzept · intern · Darts App", Iteration 03
+   (Styleguide 02 · Outfit, Verlauf, Glass), 12.10.2026
+   Quelle: die Artboards 06–13 (Live-Spiel, Effekte, Start, Neues Spiel,
+   Spieler, Statistik, Einstellungen), auf die WIRKSAMEN Werte verdichtet.
+   Wo die Entwuerfe leicht abweichen (Radien 14/16, Glasdeckkraft .32–.40),
+   steht hier nur der vereinheitlichte Wert.
+
+   Begleitdokument mit den Verhaltensregeln (Layout, Rollen der Farben,
+   Effekt-Ablaeufe, Warteschlange, Browser-Regeln):
+   BullsNBier_Styleguide-v01_FB_01_01.md
+
+   Zielbild: TV/Monitor neben dem Board, 1920 × 1080 (16:9, Full HD),
+   Bedienung per Maus/Touch. Alle Masse in px beziehen sich auf diese Buehne.
+
+   BROWSER: nur Features, die in Chrome/Edge 90+, Firefox 103+, Safari 15.4+
+   (inkl. iOS/iPadOS) und Chromium-basierten TV-Browsern laufen.
+   Bewusst NICHT verwendet: color-mix(), :has(), CSS-Nesting, @property,
+   Container-Queries, einzelne Transform-Eigenschaften (translate:/scale:),
+   inset-Kurzschreibweise, Web-Animations-API als Pflicht.
+   Animiert wird ausschliesslich transform und opacity (plus
+   background-color bei Flaechenwechseln).
+   ==================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&display=swap');
+
+
+/* --------------------------------------------------------------------
+   1 · TOKENS
+   Aufbau: eine HUELLE (Nebelgrau + weiche Farbflecken) und darauf
+   GLASKARTEN. Der aktive Werfer bekommt den Lime-Verlauf.
+   -------------------------------------------------------------------- */
+:root{
+  color-scheme: light;
+
+  /* Neutrale */
+  --mist:#E6E9E9;        /* Huelle / Seitengrund */
+  --paper:#EDF0F1;       /* helle Flaechen, Board-Singles */
+  --fog:#C7D0D2;         /* Rahmen, deaktiviert */
+  --slate:#BDC8CB;       /* Linien, Board-Draht */
+  --slate-2:#A9B5B8;     /* gestrichelte Platzhalter (Dart 2/3, "+") */
+  --ink:#202020;         /* Text, Board, Primaerknopf */
+  --ink-2:#5C6566;       /* Sekundaertext, Labels (5,1:1 auf --mist) */
+  --ink-3:#8A9496;       /* nur Deko (#-Zeichen), nie fuer lesbaren Text */
+
+  /* Dart-Akzente – jede Farbe hat genau EINE Rolle */
+  --lime:#DDF96A;        /* AM WURF, Primaer-CTA, Treffermarker, 180 */
+  --lime-soft:#F3FFAC;   /* Verlaufsstart der aktiven Karte */
+  --lime-ink:#3F4A1A;    /* Text auf Lime, wenn Grau zu schwach ist */
+  --coral:#FF6B5E;       /* Treble, Bull-Kern, Bust, Warnung */
+  --coral-soft:#FFD9D3;
+  --mint:#3DBB7A;        /* Double, Checkout, Finish, Erfolg */
+  --mint-soft:#D3F3E0;
+  --mint-ink:#1E6B43;
+  --aqua:#7FDDEB;        /* System, Kameras, "als Naechstes" */
+  --aqua-soft:#D6F5FA;
+  --aqua-strong:#2AAFC4; /* Status-Punkte, Checkout-Ziele auf dem Board */
+  --aqua-ink:#13707F;    /* Text "als Naechstes" (4,8:1) */
+
+  /* Spielerfarben – NUR Identitaet (Avatar, Kartenstreifen, WLED),
+     nie Status. Reihenfolge fest, nie zyklisch neu vergeben. */
+  --p1:#6FA8FF;  /* Blau    */
+  --p2:#FF7A6B;  /* Coral   */
+  --p3:#5FCB92;  /* Mint    */
+  --p4:#FFD66B;  /* Sonne   */
+  --p5:#B79CFF;  /* Flieder */
+  --p6:#FFB27A;  /* Apricot */
+  --p7:#7FDDEB;  /* Aqua    */
+  --p8:#FF8FC2;  /* Rose    */
+
+  /* Glas – vier Deckkraftstufen, eine Linie, zwei Unschaerfen */
+  --glass-1:rgba(255,255,255,.28);   /* wartender Spieler, Hintergrundkarte */
+  --glass-2:rgba(255,255,255,.40);   /* Standardkarte */
+  --glass-3:rgba(255,255,255,.55);   /* hervorgehoben: naechster Spieler, Infokarte im Effekt */
+  --glass-4:rgba(255,255,255,.90);   /* aktiver Tab, gewaehltes Segment */
+  --glass-line:rgba(255,255,255,.85);
+  --glass-blur:28px;                 /* Karten */
+  --glass-blur-s:20px;               /* Leisten, Navigation, Pillen */
+  --glass-fallback:rgba(242,244,244,.94);  /* ohne backdrop-filter */
+
+  /* Verlaeufe */
+  --grad-active:linear-gradient(135deg, rgba(243,255,172,.92) 0%, rgba(255,255,255,.45) 55%, rgba(255,255,255,.30) 100%);
+  --grad-active-s:linear-gradient(160deg, rgba(243,255,172,.95) 0%, rgba(255,255,255,.50) 100%);
+  --grad-cta:linear-gradient(120deg, #DDF96A 0%, #F3FFAC 100%);
+  --grad-avatar-light:linear-gradient(160deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.6) 100%);
+
+  /* Farbflecken hinter dem Glas – ohne sie wirkt Glas wie Grau */
+  --blob-lime:radial-gradient(closest-side, rgba(221,249,106,.60), rgba(221,249,106,0));
+  --blob-aqua:radial-gradient(closest-side, rgba(127,221,235,.40), rgba(127,221,235,0));
+  --blob-coral:radial-gradient(closest-side, rgba(255,107,94,.14), rgba(255,107,94,0));
+  --blob-player:radial-gradient(closest-side, rgba(111,168,255,.16), rgba(111,168,255,0));
+
+  /* Form – genau fuenf Radien */
+  --r-pill:999px;  /* Pillen, Avatare, Spieler-Chips */
+  --r-card:16px;   /* Karten, Effekt-Infokarte */
+  --r-tile:12px;   /* Modus-Kacheln, Spielerkarten in der Liste, Swatches */
+  --r-field:10px;  /* Felder, Wurf-Chips, Segment-Huelle, Buttons gross */
+  --r-nav:6px;     /* Navigationspunkte, Segmente, kleine Buttons, Tags */
+
+  /* Schatten – nur was hervorgehoben ist oder schwebt */
+  --shadow-active:0 30px 60px rgba(32,32,32,.08);  /* aktive Spielerkarte, Formular */
+  --shadow-tab:0 4px 12px rgba(32,32,32,.08);      /* gewaehlter Tab/Segment */
+  --shadow-cta:0 24px 48px rgba(170,200,40,.25);   /* Game on */
+  --shadow-fx:0 30px 60px rgba(32,32,32,.10);      /* Infokarte im Effekt */
+
+  /* Schrift */
+  --font:'Outfit','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --fs-score:500px;    /* Rest des aktiven Werfers */
+  --fs-fx:460px;       /* Effektwort (T20, 180) */
+  --fs-display:88px;   /* Begruessung Startseite */
+  --fs-h1:48px;        /* Seitentitel */
+  --fs-name:56px;      /* Name des aktiven Werfers */
+  --fs-h2:28px;        /* Kartentitel */
+  --fs-h3:24px;
+  --fs-lead:20px;
+  --fs-body:17px;      /* Buttons gross, Listen */
+  --fs-ui:15px;        /* Navigation, Buttons, Felder */
+  --fs-meta:14px;
+  --fs-label:13px;     /* Feld-Labels, Unterzeilen */
+  --fs-micro:12px;     /* Tags, Kennzahl-Labels */
+
+  /* Buehne */
+  --stage-w:1920px;
+  --stage-h:1080px;
+  --pad-x:48px;
+  --header-top:28px;
+  --header-h:64px;
+  --content-top:116px;
+  --pad-b:32px;
+  --gap-l:24px;
+  --gap-m:16px;
+  --gap-s:12px;
+
+  /* Bewegung */
+  --t-surface:background-color 120ms ease-out;
+  --ease-out:cubic-bezier(.2,.7,.2,1);
+  --ease-back:cubic-bezier(.34,1.56,.64,1);   /* leichtes Ueberschwingen */
+  --ease-in:cubic-bezier(.4,0,1,1);
+  --d-pop:260ms;
+  --d-card:600ms;
+  --d-fx-s:1200ms;    /* Triple */
+  --d-fx-m:1400ms;    /* Bullseye, Game on */
+  --d-fx-l:1600ms;    /* Finish 100+, Shanghai */
+  --d-fx-xl:2200ms;   /* Leg gewonnen */
+  --d-fx-180:2400ms;  /* 180 */
+  --d-fx-win:4000ms;  /* Spiel gewonnen (bleibt danach stehen) */
+
+  /* Ebenen */
+  --z-blob:0;
+  --z-content:1;
+  --z-header:10;
+  --z-toast:50;
+  --z-fx:100;
+  --z-winner:110;
+}
+
+/* Nacht-Fassung (Entwurf 05) – optional, z. B. fuer dunkle Kneipe.
+   Wechselt Grund, Text und Glas; Akzente und Spielerfarben bleiben. */
+:root[data-theme="night"]{
+  color-scheme:dark;
+  --mist:#151616;
+  --ink:#F2F4F4;
+  --ink-2:#9AA4A6;
+  --glass-1:rgba(255,255,255,.04);
+  --glass-2:rgba(255,255,255,.06);
+  --glass-3:rgba(255,255,255,.10);
+  --glass-4:rgba(255,255,255,.14);
+  --glass-line:rgba(255,255,255,.12);
+  --glass-fallback:rgba(38,40,40,.96);
+  --grad-active:linear-gradient(135deg, rgba(221,249,106,.26) 0%, rgba(255,255,255,.05) 45%, rgba(255,255,255,.03) 100%);
+  --blob-lime:radial-gradient(closest-side, rgba(221,249,106,.28), rgba(221,249,106,0));
+  --blob-aqua:radial-gradient(closest-side, rgba(127,221,235,.22), rgba(127,221,235,0));
+}
+
+
+/* --------------------------------------------------------------------
+   2 · BASIS
+   -------------------------------------------------------------------- */
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:var(--font);
+  font-size:var(--fs-ui);
+  background:var(--mist); color:var(--ink);
+  font-variant-numeric:tabular-nums;     /* Scores springen nicht */
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit; color:inherit;}
+button{cursor:pointer;}
+.hidden{display:none !important;}
+
+/* Buehne: feste 1920 × 1080, wird als Ganzes skaliert (siehe Styleguide §2) */
+.stage{
+  position:relative; overflow:hidden;
+  width:var(--stage-w); height:var(--stage-h);
+  background:var(--mist);
+  -webkit-transform-origin:0 0; transform-origin:0 0;
+}
+
+/* Farbflecken: absolut, unter allem, nehmen keine Klicks */
+.blob{position:absolute; border-radius:50%; pointer-events:none; z-index:var(--z-blob);}
+.blob.lime{background:var(--blob-lime);}
+.blob.aqua{background:var(--blob-aqua);}
+.blob.coral{background:var(--blob-coral);}
+.blob.player{background:var(--blob-player);}
+
+/* Fokus: sichtbar und ueberall gleich */
+:focus{outline:none;}
+:focus-visible{outline:3px solid var(--ink); outline-offset:3px;}
+
+
+/* --------------------------------------------------------------------
+   3 · GLAS
+   Ein Rezept fuer alles. Fallback ohne backdrop-filter: fast deckend.
+   -------------------------------------------------------------------- */
+.glass{
+  background:var(--glass-2);
+  border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:blur(var(--glass-blur));
+          backdrop-filter:blur(var(--glass-blur));
+  border-radius:var(--r-card);
+}
+.glass.s{-webkit-backdrop-filter:blur(var(--glass-blur-s)); backdrop-filter:blur(var(--glass-blur-s));}
+.glass.wait{background:var(--glass-1);}
+.glass.hi{background:var(--glass-3);}
+.glass.active{background:var(--grad-active); box-shadow:var(--shadow-active);}
+
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  .glass, .glass.wait, .glass.hi{background:var(--glass-fallback);}
+  .glass.active{background:linear-gradient(135deg, #F3FFAC 0%, #F2F4F4 60%);}
+}
+
+
+/* --------------------------------------------------------------------
+   4 · HEADER & NAVIGATION
+   Logo links · Navigation mittig als Glas-Pille · Status, CTA, Avatar rechts
+   -------------------------------------------------------------------- */
+.header{
+  position:absolute; left:var(--pad-x); right:var(--pad-x); top:var(--header-top);
+  height:var(--header-h); z-index:var(--z-header);
+  display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+}
+.brand{display:flex; align-items:center; gap:14px; text-decoration:none; color:var(--ink);}
+.brand .mark{width:52px; height:52px; flex:none;}
+.wordmark{font-size:30px; letter-spacing:-.03em; line-height:1; white-space:nowrap;}
+.wordmark b{font-weight:600;}
+.wordmark i{font-style:normal; font-weight:300; color:var(--ink-2);}
+.wordmark span{font-weight:300;}
+.brand .claim{font-size:var(--fs-label); color:var(--ink-2); padding-left:14px; border-left:1px solid var(--slate); line-height:1.2;}
+
+.nav{display:flex; gap:4px; padding:4px; border-radius:8px;}
+.nav a{
+  padding:10px 18px; border-radius:var(--r-nav); font-size:var(--fs-ui);
+  color:var(--ink-2); text-decoration:none; transition:var(--t-surface);
+}
+.nav a:hover{background:rgba(255,255,255,.5); color:var(--ink);}
+.nav a.on{background:var(--glass-4); color:var(--ink); box-shadow:var(--shadow-tab);}
+
+.hstatus{
+  height:44px; padding:0 16px; border-radius:var(--r-nav);
+  display:flex; align-items:center; gap:8px; font-size:var(--fs-meta);
+}
+.dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--aqua-strong);}
+.dot.ok{background:var(--mint);} .dot.warn{background:var(--coral);} .dot.live{background:var(--lime);}
+
+
+/* --------------------------------------------------------------------
+   5 · KNOEPFE – vier Stufen
+   CTA (Lime) · Primaer (Ink) · Glas (ruhig) · Segment
+   -------------------------------------------------------------------- */
+.btn-cta{                       /* "Neues Spiel +", "Game on", "Spieler speichern" */
+  position:relative; overflow:hidden; z-index:0;
+  height:44px; padding:0 18px; border:0; border-radius:var(--r-nav);
+  background:var(--lime); color:var(--ink); font-size:var(--fs-ui); font-weight:500;
+  display:inline-flex; align-items:center; gap:8px; text-decoration:none; white-space:nowrap;
+  -webkit-transition:color 160ms ease-out 90ms; transition:color 160ms ease-out 90ms;
+}
+/* Hover: Ink-Flaeche faehrt von links nach rechts ein und beim Verlassen nach rechts
+   wieder raus. Ruhezustand bleibt Flight Lime. Animiert wird nur transform (scaleX). */
+.btn-cta::before{
+  content:''; position:absolute; left:0; top:0; width:100%; height:100%; z-index:-1;
+  background:var(--ink);
+  -webkit-transform:scaleX(0); transform:scaleX(0);
+  -webkit-transform-origin:100% 50%; transform-origin:100% 50%;
+  -webkit-transition:-webkit-transform 340ms var(--ease-out); transition:transform 340ms var(--ease-out);
+}
+.btn-cta:hover::before, .btn-cta:focus-visible::before{
+  -webkit-transform:scaleX(1); transform:scaleX(1); -webkit-transform-origin:0 50%; transform-origin:0 50%;
+}
+.btn-cta:hover, .btn-cta:focus-visible{color:var(--lime);}
+/* Touch (kein Hover): dieselbe Flaeche beim Druecken */
+@media (hover:none){
+  .btn-cta:active::before{-webkit-transform:scaleX(1); transform:scaleX(1); -webkit-transform-origin:0 50%; transform-origin:0 50%;}
+  .btn-cta:active{color:var(--lime);}
+}
+.btn-cta.xl{height:96px; padding:0 28px; border-radius:var(--r-card); background:var(--grad-cta);
+  box-shadow:var(--shadow-cta); font-size:32px; justify-content:space-between;}
+
+.btn-primary{                   /* "Naechster Spieler", "Neues Spiel" auf Startseite */
+  height:56px; padding:0 24px; border:0; border-radius:8px;
+  background:var(--ink); color:#fff; font-size:var(--fs-ui); font-weight:500; white-space:nowrap;
+  transition:var(--t-surface);
+}
+.btn-primary:hover{background:#000;}
+.btn-primary.lime-text{color:var(--lime);}
+
+.btn-glass{                     /* "Rueckgaengig", "Korrigieren", "Abbrechen" */
+  height:56px; padding:0 22px; border-radius:8px;
+  border:1px solid var(--glass-line); background:rgba(255,255,255,.5); color:var(--ink);
+  font-size:var(--fs-ui); white-space:nowrap; transition:var(--t-surface);
+}
+.btn-glass:hover{background:rgba(255,255,255,.75);}
+
+.btn-icon{                      /* Vorschau-Play, "+" */
+  width:44px; height:44px; padding:0; border-radius:var(--r-field);
+  border:1px solid var(--glass-line); background:rgba(255,255,255,.55); color:var(--ink);
+  display:inline-flex; align-items:center; justify-content:center; transition:var(--t-surface);
+}
+.btn-icon:hover{background:rgba(255,255,255,.85);}
+.btn-icon.on{background:var(--lime); border-color:var(--lime);}
+
+/* Segment-Auswahl – ersetzt Radio/Select (Startwert, In/Out, Legs ...).
+   Die weisse Markierung .seg__thumb gleitet seitlich zum angeklickten Segment –
+   nach links oder rechts, je nachdem wohin man klickt. Nur transform; deshalb sind
+   alle Segmente gleich breit. JS setzt --n (Anzahl) und --i (Index), Styleguide §6.2. */
+.seg{position:relative; display:flex; gap:4px; padding:4px; border-radius:var(--r-field);
+  background:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.7);}
+.seg button{position:relative; z-index:1; flex:1 1 0; min-width:0; height:48px; border:0; border-radius:7px; background:transparent;
+  color:var(--ink-2); font-size:17px; -webkit-transition:background-color 120ms ease-out, color 160ms ease-out; transition:background-color 120ms ease-out, color 160ms ease-out;}
+.seg button:hover{background:rgba(255,255,255,.45);}          /* Hover-Highlight bleibt */
+.seg button.on{background:var(--glass-4); color:var(--ink); box-shadow:var(--shadow-tab);}   /* Fallback ohne JS */
+.seg__thumb{
+  position:absolute; left:4px; top:4px; bottom:4px; z-index:0; border-radius:7px; pointer-events:none;
+  width:calc((100% - 8px - (var(--n, 3) - 1) * 4px) / var(--n, 3));
+  background:var(--glass-4); box-shadow:var(--shadow-tab);
+  -webkit-transform:translateX(calc(var(--i, 0) * (100% + 4px))); transform:translateX(calc(var(--i, 0) * (100% + 4px)));
+  -webkit-transition:-webkit-transform 320ms cubic-bezier(.3,1.3,.5,1); transition:transform 320ms cubic-bezier(.3,1.3,.5,1);
+}
+.seg.js button.on, .seg.js button.on:hover{background:transparent; box-shadow:none;}
+
+
+/* --------------------------------------------------------------------
+   6 · FELDER
+   -------------------------------------------------------------------- */
+.field{display:flex; flex-direction:column; gap:6px; font-size:var(--fs-label); color:var(--ink-2);}
+.field input, .field select{
+  height:52px; border-radius:var(--r-field); padding:0 16px;
+  border:1px solid rgba(255,255,255,.95); background:rgba(255,255,255,.65);
+  font-size:17px; color:var(--ink); outline:none;
+}
+.field input:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
+input[type=checkbox]{width:20px; height:20px; accent-color:var(--ink); margin:0; cursor:pointer;}
+
+
+/* --------------------------------------------------------------------
+   7 · SPIEL-BAUTEILE
+   -------------------------------------------------------------------- */
+/* Tags in Karten */
+.tag{display:inline-block; padding:7px 12px; border-radius:var(--r-nav); font-size:var(--fs-label); font-weight:500; white-space:nowrap;}
+.tag.active{background:var(--ink); color:var(--lime);}             /* "Am Wurf" */
+.tag.next{background:rgba(127,221,235,.45); color:var(--ink);}      /* "Als Naechstes" */
+.tag.wait{border:1px solid var(--slate); color:var(--ink-2);}       /* "Wartet" */
+
+/* Wurf-Chips (3 je Aufnahme) */
+.dart{height:112px; border-radius:var(--r-field); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; color:var(--ink);}
+.dart b{font-size:42px; font-weight:400; line-height:1;}
+.dart small{font-size:var(--fs-label); padding-top:6px;}
+.dart.single{background:rgba(255,255,255,.6); border:1px solid var(--glass-line);}
+.dart.double{background:var(--mint);}
+.dart.triple{background:var(--coral);}
+.dart.bull{background:var(--coral); box-shadow:inset 0 0 0 6px var(--mint);}
+.dart.miss{background:transparent; border:1px solid var(--slate-2); color:var(--ink-2);}
+.dart.empty{background:transparent; border:1px dashed var(--slate-2); color:var(--ink-2); font-size:var(--fs-ui);}
+
+/* Checkout-Box */
+.checkout{border-radius:12px; padding:18px 20px; background:rgba(255,255,255,.6); border:1px solid rgba(255,255,255,.9);}
+.checkout .lbl{display:flex; align-items:center; gap:8px; font-size:var(--fs-label); color:var(--ink-2);}
+.checkout .lbl .dot{background:var(--mint);}
+.checkout .way{font-size:52px; font-weight:300; letter-spacing:-.02em;}
+
+/* Score */
+.score{font-size:var(--fs-score); font-weight:200; letter-spacing:-.06em; line-height:.78;}
+.score.m{font-size:400px;}
+.rest{font-size:52px; font-weight:200; letter-spacing:-.04em; line-height:.9;}
+
+/* Avatar – allgemeine Silhouette auf Spielerfarbe */
+.avatar{position:relative; width:var(--av,44px); height:var(--av,44px); border-radius:50%; overflow:hidden; flex:none;
+  background:var(--grad-avatar-light), var(--pc,var(--p1));}
+.avatar svg{position:absolute; left:0; bottom:0; width:100%; height:100%;}
+/* DiceBear: <img> liegt ueber der Silhouette. Laedt es nicht (offline, Fehler),
+   bleibt die Silhouette sichtbar. Animationen sitzen am .avatar, nie am <img>. */
+.avatar img{position:absolute; left:0; top:0; width:100%; height:100%; object-fit:cover; display:block;}
+.avatar.ring{box-shadow:0 0 0 3px #fff, 0 0 0 6px var(--pc,var(--p1));}   /* Schatten liegt ausserhalb, overflow bleibt hidden */
+
+/* Spielerkarte in der Liste (unten, 136 px hoch) */
+.pcard{border-radius:var(--r-tile); padding:14px 16px; display:flex; flex-direction:column; justify-content:space-between;
+  border:1px solid var(--glass-line); background:var(--glass-1);
+  -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px);}
+.pcard.next{background:var(--glass-3);}
+.pcard.active{background:var(--grad-active-s); box-shadow:0 16px 32px rgba(32,32,32,.08);}
+.pcard .who{font-size:17px; white-space:nowrap;}
+.pcard .state{font-size:var(--fs-micro); color:var(--ink-2);}
+.pcard.next .state{color:var(--aqua-ink);}
+
+/* Modus-Kachel (Neues Spiel) */
+.mode{height:100px; border-radius:var(--r-tile); padding:14px 16px; text-align:left;
+  display:flex; flex-direction:column; justify-content:space-between;
+  border:1px solid var(--glass-line); background:rgba(255,255,255,.35); transition:var(--t-surface);}
+.mode b{font-size:20px; font-weight:400;}
+.mode small{font-size:var(--fs-label); color:var(--ink-2); line-height:1.3;}
+.mode.on{background:linear-gradient(150deg, #F3FFAC 0%, rgba(221,249,106,.85) 100%); box-shadow:0 16px 32px rgba(170,200,40,.2);}
+
+/* Dartboard-Farben (SVG-Komponente) */
+.board{--b-surround:#202020; --b-dark:#202020; --b-light:#EDF0F1; --b-red:#FF6B5E;
+  --b-green:#3DBB7A; --b-wire:#BDC8CB; --b-num:#EDF0F1; --b-hit:#DDF96A; --b-target:#2AAFC4;}
+
+
+/* --------------------------------------------------------------------
+   8 · HINWEISE (Toast, Status-Badge)
+   -------------------------------------------------------------------- */
+.toast{
+  position:absolute; right:var(--pad-x); top:108px; z-index:var(--z-toast);
+  min-width:360px; padding:14px 18px; border-radius:12px;
+  display:flex; align-items:center; gap:12px; font-size:var(--fs-ui);
+  background:var(--glass-3); border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:blur(var(--glass-blur-s)); backdrop-filter:blur(var(--glass-blur-s));
+  box-shadow:var(--shadow-fx);
+}
+.toast .ico{width:32px; height:32px; border-radius:8px; flex:none; display:flex; align-items:center; justify-content:center;}
+.toast.info .ico{background:var(--aqua);}
+.toast.warn .ico{background:var(--coral);}
+.toast.ok .ico{background:var(--mint);}
+
+
+/* ====================================================================
+   9 · ANIMATIONEN
+   Drei Stufen:
+     A  Vollbild-Effekt  .fx       Overlay ueber dem Spiel, blockiert keine Eingabe
+     B  Karten-Effekt    .anim-*   am Bauteil selbst (Chip, Karte, Score)
+     C  Hinweis          .toast / .badge-*
+   Aufbau Overlay:  <div class="fx fx--…"> <div class="fx__veil"></div>
+                    <div class="fx__stage"> …Glow, Ringe, Wort, Schild, Karte… </div> </div>
+   Start: Klasse .play setzen. Neu starten: .play entfernen, Reflow
+   erzwingen (el.offsetWidth), .play wieder setzen (Styleguide §8.4).
+   Nur transform + opacity. Alle Keyframes mit -webkit-Praefix.
+   ==================================================================== */
+
+/* ---------- A · Vollbild-Effekt: gemeinsames Geruest ---------- */
+.fx{
+  position:absolute; left:0; top:0; width:100%; height:100%;
+  z-index:var(--z-fx); pointer-events:none; overflow:hidden; visibility:hidden;
+}
+.fx.play{visibility:visible;}
+/* WICHTIG: Die Wurzel .fx selbst wird NIE per opacity animiert. Ein Vorfahre mit
+   opacity < 1 (ebenso filter, mask, clip-path, mix-blend-mode) wird zur
+   "Backdrop Root" – der Schleier darunter wuerde dann nichts mehr weichzeichnen.
+   Deshalb laufen Schleier (.fx__veil) und Inhalt (.fx__stage) getrennt ein und aus. */
+.fx.play .fx__veil, .fx.play .fx__stage{-webkit-animation:fx-life var(--fx-d,1200ms) linear both; animation:fx-life var(--fx-d,1200ms) linear both;}
+.fx__stage{position:absolute; left:0; top:0; width:100%; height:100%; opacity:0;}
+.fx__veil{
+  opacity:0;
+  position:absolute; left:0; top:0; width:100%; height:100%;
+  background:rgba(230,233,233,.50);
+  -webkit-backdrop-filter:blur(18px) saturate(1.2); backdrop-filter:blur(18px) saturate(1.2);
+}
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  .fx__veil{background:rgba(230,233,233,.90);}
+}
+.fx__glow{position:absolute; left:50%; top:50%; width:1400px; height:1400px; margin:-700px 0 0 -700px; border-radius:50%;}
+.fx__ring{position:absolute; left:50%; top:50%; border-radius:50%; opacity:0;}
+.fx__tag{position:absolute; left:0; right:0; top:150px; text-align:center;}
+.fx__tag span{display:inline-block; padding:8px 16px; border-radius:var(--r-pill); font-size:16px; letter-spacing:.06em;
+  background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.9);}
+.fx__word{position:absolute; left:0; right:0; text-align:center; font-weight:200; letter-spacing:-.06em; line-height:.9; opacity:0;}
+.fx__plus{position:absolute; padding:18px 28px; border-radius:14px; font-size:72px; font-weight:300; letter-spacing:-.03em; opacity:0;}
+/* Pulsierende Kreise: drei Ringe laufen nacheinander nach aussen.
+   Farbe per --pulse-c / --pulse-g (A2 Coral, A3 Mint, A8 Spielerfarbe). */
+.fx__pulse{position:absolute; left:50%; top:540px; width:0; height:0;}
+.fx__pulse i{position:absolute; left:0; top:0; border-radius:50%; opacity:0;
+  border:4px solid var(--pulse-c, #FF6B5E);
+  box-shadow:0 0 36px var(--pulse-g, rgba(255,107,94,.35)), inset 0 0 28px var(--pulse-g, rgba(255,107,94,.25));}
+
+/* Text mit Verlauf: immer Prefix + Fallbackfarbe */
+.grad-text{color:var(--ink); -webkit-background-clip:text; background-clip:text;}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .grad-text{color:transparent; -webkit-text-fill-color:transparent;}
+}
+
+/* Lebenslauf jedes Overlays: 0–12 % ein, 12–85 % stehen, 85–100 % aus */
+@-webkit-keyframes fx-life{0%{opacity:0} 12%{opacity:1} 85%{opacity:1} 100%{opacity:0}}
+@keyframes fx-life{0%{opacity:0} 12%{opacity:1} 85%{opacity:1} 100%{opacity:0}}
+@-webkit-keyframes fx-pulse{0%{opacity:0; -webkit-transform:scale(.5)} 12%{opacity:.95} 100%{opacity:0; -webkit-transform:scale(1.9)}}
+@keyframes fx-pulse{0%{opacity:0; transform:scale(.5)} 12%{opacity:.95} 100%{opacity:0; transform:scale(1.9)}}
+@-webkit-keyframes fx-bob{0%,100%{-webkit-transform:translateY(0)} 50%{-webkit-transform:translateY(-12px)}}
+@keyframes fx-bob{0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)}}
+@-webkit-keyframes fx-spin{0%{-webkit-transform:rotate(0deg)} 100%{-webkit-transform:rotate(360deg)}}
+@keyframes fx-spin{0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)}}
+@-webkit-keyframes fx-fadein{0%{opacity:0} 100%{opacity:1}}
+@keyframes fx-fadein{0%{opacity:0} 100%{opacity:1}}
+@-webkit-keyframes fx-spark{0%{opacity:0; -webkit-transform:translateX(0) scale(1)} 4%{opacity:1} 45%{opacity:0; -webkit-transform:translateX(190px) scale(.35)} 100%{opacity:0; -webkit-transform:translateX(190px) scale(.35)}}
+@keyframes fx-spark{0%{opacity:0; transform:translateX(0) scale(1)} 4%{opacity:1} 45%{opacity:0; transform:translateX(190px) scale(.35)} 100%{opacity:0; transform:translateX(190px) scale(.35)}}
+@-webkit-keyframes fx-twinkle{0%,100%{opacity:0; -webkit-transform:scale(.2) rotate(0deg)} 50%{opacity:1; -webkit-transform:scale(1) rotate(45deg)}}
+@keyframes fx-twinkle{0%,100%{opacity:0; transform:scale(.2) rotate(0deg)} 50%{opacity:1; transform:scale(1) rotate(45deg)}}
+@-webkit-keyframes fx-word-in{0%{opacity:0; -webkit-transform:scale(.9)} 45%{opacity:1; -webkit-transform:scale(1.04)} 100%{opacity:1; -webkit-transform:scale(1)}}
+@keyframes fx-word-in{0%{opacity:0; transform:scale(.9)} 45%{opacity:1; transform:scale(1.04)} 100%{opacity:1; transform:scale(1)}}
+@-webkit-keyframes fx-ring-out{0%{opacity:.9; -webkit-transform:scale(.55)} 100%{opacity:0; -webkit-transform:scale(1.25)}}
+@keyframes fx-ring-out{0%{opacity:.9; transform:scale(.55)} 100%{opacity:0; transform:scale(1.25)}}
+@-webkit-keyframes fx-ring-in{0%{opacity:0; -webkit-transform:scale(1.6)} 100%{opacity:1; -webkit-transform:scale(1)}}
+@keyframes fx-ring-in{0%{opacity:0; transform:scale(1.6)} 100%{opacity:1; transform:scale(1)}}
+@-webkit-keyframes fx-glow-pulse{0%{opacity:0; -webkit-transform:scale(.7)} 40%{opacity:1; -webkit-transform:scale(1.05)} 100%{opacity:.85; -webkit-transform:scale(1)}}
+@keyframes fx-glow-pulse{0%{opacity:0; transform:scale(.7)} 40%{opacity:1; transform:scale(1.05)} 100%{opacity:.85; transform:scale(1)}}
+@-webkit-keyframes fx-plus-r{0%{opacity:0; -webkit-transform:translateY(24px) rotate(8deg) scale(.8)} 60%{opacity:1; -webkit-transform:translateY(-4px) rotate(8deg) scale(1.05)} 100%{opacity:1; -webkit-transform:translateY(0) rotate(8deg) scale(1)}}
+@keyframes fx-plus-r{0%{opacity:0; transform:translateY(24px) rotate(8deg) scale(.8)} 60%{opacity:1; transform:translateY(-4px) rotate(8deg) scale(1.05)} 100%{opacity:1; transform:translateY(0) rotate(8deg) scale(1)}}
+@-webkit-keyframes fx-plus-l{0%{opacity:0; -webkit-transform:translateY(24px) rotate(-7deg) scale(.8)} 60%{opacity:1; -webkit-transform:translateY(-4px) rotate(-7deg) scale(1.05)} 100%{opacity:1; -webkit-transform:translateY(0) rotate(-7deg) scale(1)}}
+@keyframes fx-plus-l{0%{opacity:0; transform:translateY(24px) rotate(-7deg) scale(.8)} 60%{opacity:1; transform:translateY(-4px) rotate(-7deg) scale(1.05)} 100%{opacity:1; transform:translateY(0) rotate(-7deg) scale(1)}}
+@-webkit-keyframes fx-fade-up{0%{opacity:0; -webkit-transform:translateY(20px)} 100%{opacity:1; -webkit-transform:translateY(0)}}
+@keyframes fx-fade-up{0%{opacity:0; transform:translateY(20px)} 100%{opacity:1; transform:translateY(0)}}
+@-webkit-keyframes fx-spacing{0%{opacity:0; -webkit-transform:scaleX(1.25)} 100%{opacity:1; -webkit-transform:scaleX(1)}}
+@keyframes fx-spacing{0%{opacity:0; transform:scaleX(1.25)} 100%{opacity:1; transform:scaleX(1)}}
+@-webkit-keyframes fx-core{0%{-webkit-transform:scale(0)} 55%{-webkit-transform:scale(1.18)} 100%{-webkit-transform:scale(1)}}
+@keyframes fx-core{0%{transform:scale(0)} 55%{transform:scale(1.18)} 100%{transform:scale(1)}}
+@-webkit-keyframes fx-wipe{0%{-webkit-transform:scaleX(0)} 100%{-webkit-transform:scaleX(1)}}
+@keyframes fx-wipe{0%{transform:scaleX(0)} 100%{transform:scaleX(1)}}
+@-webkit-keyframes fx-drop{0%{opacity:0; -webkit-transform:translateY(-80px) scale(1.2)} 70%{opacity:1; -webkit-transform:translateY(6px) scale(1)} 100%{opacity:1; -webkit-transform:translateY(0) scale(1)}}
+@keyframes fx-drop{0%{opacity:0; transform:translateY(-80px) scale(1.2)} 70%{opacity:1; transform:translateY(6px) scale(1)} 100%{opacity:1; transform:translateY(0) scale(1)}}
+@-webkit-keyframes fx-burst{0%{opacity:0; -webkit-transform:scaleX(0)} 30%{opacity:1} 100%{opacity:0; -webkit-transform:scaleX(1)}}
+@keyframes fx-burst{0%{opacity:0; transform:scaleX(0)} 30%{opacity:1} 100%{opacity:0; transform:scaleX(1)}}
+@-webkit-keyframes fx-stamp{0%{opacity:0; -webkit-transform:scale(1.5) rotate(-6deg)} 60%{opacity:1; -webkit-transform:scale(.96) rotate(-6deg)} 100%{opacity:1; -webkit-transform:scale(1) rotate(-6deg)}}
+@keyframes fx-stamp{0%{opacity:0; transform:scale(1.5) rotate(-6deg)} 60%{opacity:1; transform:scale(.96) rotate(-6deg)} 100%{opacity:1; transform:scale(1) rotate(-6deg)}}
+@-webkit-keyframes fx-confetti{0%{opacity:1; -webkit-transform:translate(0,-80px) rotate(0deg)} 50%{-webkit-transform:translate(50px,560px) rotate(300deg)} 100%{opacity:1; -webkit-transform:translate(-20px,1200px) rotate(620deg)}}
+@keyframes fx-confetti{0%{opacity:1; transform:translate(0,-80px) rotate(0deg)} 50%{transform:translate(50px,560px) rotate(300deg)} 100%{opacity:1; transform:translate(-20px,1200px) rotate(620deg)}}
+@-webkit-keyframes fx-confetti-b{0%{opacity:1; -webkit-transform:translate(0,-80px) rotate(0deg)} 50%{-webkit-transform:translate(-50px,560px) rotate(-280deg)} 100%{opacity:1; -webkit-transform:translate(20px,1200px) rotate(-600deg)}}
+@keyframes fx-confetti-b{0%{opacity:1; transform:translate(0,-80px) rotate(0deg)} 50%{transform:translate(-50px,560px) rotate(-280deg)} 100%{opacity:1; transform:translate(20px,1200px) rotate(-600deg)}}
+@-webkit-keyframes fx-breathe{0%,100%{-webkit-transform:scale(1)} 50%{-webkit-transform:scale(1.06)}}
+@keyframes fx-breathe{0%,100%{transform:scale(1)} 50%{transform:scale(1.06)}}
+@-webkit-keyframes fx-hold{0%{opacity:0} 10%{opacity:1} 100%{opacity:1}}
+@keyframes fx-hold{0%{opacity:0} 10%{opacity:1} 100%{opacity:1}}
+
+/* ---------- A1 · Game on (Spielstart) · 1400 ms ---------- */
+.fx--start{--fx-d:1400ms;}
+.fx--start .fx__band{position:absolute; left:0; top:380px; width:100%; height:320px; background:var(--grad-cta);
+  -webkit-transform-origin:0 50%; transform-origin:0 50%; -webkit-transform:scaleX(0); transform:scaleX(0);}
+.fx--start .fx__word{top:420px; font-size:220px; font-weight:300; letter-spacing:-.04em;}
+.fx--start .fx__sub{position:absolute; left:0; right:0; top:660px; text-align:center; font-size:22px; opacity:0;}
+.fx--start.play .fx__band{-webkit-animation:fx-wipe 420ms var(--ease-out) 0ms both; animation:fx-wipe 420ms var(--ease-out) 0ms both;}
+.fx--start.play .fx__word{-webkit-animation:fx-word-in 520ms var(--ease-out) 260ms both; animation:fx-word-in 520ms var(--ease-out) 260ms both;}
+.fx--start.play .fx__sub{-webkit-animation:fx-fade-up 360ms var(--ease-out) 520ms both; animation:fx-fade-up 360ms var(--ease-out) 520ms both;}
+
+/* ---------- A2 · Treffer Triple · 1200 ms ---------- */
+.fx--triple{--fx-d:1200ms;}
+.fx--triple .fx__glow{background:radial-gradient(closest-side, rgba(255,107,94,.50), rgba(255,107,94,.12) 55%, rgba(255,107,94,0));}
+.fx--triple .fx__pulse{top:540px;}
+.fx--triple .fx__pulse i{width:600px; height:600px; margin:-300px 0 0 -300px; --pulse-c:#FF6B5E; --pulse-g:rgba(255,107,94,.35);}
+.fx--triple .fx__tag{top:300px;}
+/* Wort optisch mittig: Zeilenbox 414 px, Mitte bei 540 = Buehnenmitte */
+.fx--triple .fx__word{top:333px; font-size:var(--fs-fx); padding-left:.06em; background-image:linear-gradient(180deg, #202020 0%, #202020 45%, #FF6B5E 100%);}
+.fx--triple .fx__plus{left:1390px; top:330px; background:var(--coral); box-shadow:0 24px 48px rgba(255,107,94,.35);}
+.fx--triple.play .fx__glow{-webkit-animation:fx-glow-pulse 600ms var(--ease-out) 0ms both; animation:fx-glow-pulse 600ms var(--ease-out) 0ms both;}
+.fx--triple.play .fx__word{-webkit-animation:fx-word-in 400ms var(--ease-out) 80ms both; animation:fx-word-in 400ms var(--ease-out) 80ms both;}
+.fx--triple.play .fx__pulse i:nth-child(1){-webkit-animation:fx-pulse 760ms var(--ease-out) 60ms both; animation:fx-pulse 760ms var(--ease-out) 60ms both;}
+.fx--triple.play .fx__pulse i:nth-child(2){-webkit-animation:fx-pulse 760ms var(--ease-out) 300ms both; animation:fx-pulse 760ms var(--ease-out) 300ms both;}
+.fx--triple.play .fx__pulse i:nth-child(3){-webkit-animation:fx-pulse 760ms var(--ease-out) 540ms both; animation:fx-pulse 760ms var(--ease-out) 540ms both;}
+.fx--triple.play .fx__plus{-webkit-animation:fx-plus-r 400ms var(--ease-back) 200ms both; animation:fx-plus-r 400ms var(--ease-back) 200ms both;}
+
+/* ---------- A3 · Bullseye · 1400 ms (Outer Bull: .fx--bull.outer, 1000 ms) ---------- */
+.fx--bull{--fx-d:1400ms;}
+.fx--bull .fx__glow{background:radial-gradient(closest-side, rgba(61,187,122,.42), rgba(127,221,235,.14) 60%, rgba(127,221,235,0)); top:440px;}
+.fx--bull .fx__ring{border:2px solid rgba(61,187,122,.40); top:440px;}
+.fx--bull .fx__ring.r1{width:700px; height:700px; margin:-350px 0 0 -350px;}
+.fx--bull .fx__ring.r2{width:900px; height:900px; margin:-450px 0 0 -450px; border-width:1px;}
+.fx--bull .fx__target{position:absolute; left:50%; top:440px; width:480px; height:480px; margin:-240px 0 0 -240px; border-radius:50%;
+  background:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.9); box-shadow:0 30px 80px rgba(61,187,122,.25);
+  display:flex; align-items:center; justify-content:center; opacity:0;}
+.fx--bull .fx__outer{width:300px; height:300px; border-radius:50%; background:linear-gradient(160deg,#6FD69E 0%,#3DBB7A 100%);
+  display:flex; align-items:center; justify-content:center;}
+.fx--bull .fx__core{width:130px; height:130px; border-radius:50%; background:linear-gradient(160deg,#FF8C80 0%,#FF6B5E 100%);
+  box-shadow:0 0 0 10px rgba(221,249,106,.55), 0 0 60px rgba(255,107,94,.6); -webkit-transform:scale(0); transform:scale(0);}
+.fx--bull .fx__word{top:690px; font-size:132px; font-weight:300; letter-spacing:.32em; padding-left:.32em; line-height:1;}
+.fx--bull .fx__plus{left:1330px; top:230px; background:var(--mint); box-shadow:0 24px 48px rgba(61,187,122,.35);}
+.fx--bull .fx__pulse{top:440px;}
+.fx--bull .fx__pulse i{width:480px; height:480px; margin:-240px 0 0 -240px; --pulse-c:#3DBB7A; --pulse-g:rgba(61,187,122,.35);}
+.fx--bull.play .fx__glow{-webkit-animation:fx-glow-pulse 700ms var(--ease-out) 0ms both; animation:fx-glow-pulse 700ms var(--ease-out) 0ms both;}
+.fx--bull.play .r2{-webkit-animation:fx-ring-in 500ms var(--ease-out) 0ms both; animation:fx-ring-in 500ms var(--ease-out) 0ms both;}
+.fx--bull.play .r1{-webkit-animation:fx-ring-in 500ms var(--ease-out) 100ms both; animation:fx-ring-in 500ms var(--ease-out) 100ms both;}
+.fx--bull.play .fx__target{-webkit-animation:fx-ring-in 450ms var(--ease-out) 200ms both; animation:fx-ring-in 450ms var(--ease-out) 200ms both;}
+.fx--bull.play .fx__core{-webkit-animation:fx-core 380ms var(--ease-back) 520ms both; animation:fx-core 380ms var(--ease-back) 520ms both;}
+.fx--bull.play .fx__word{-webkit-animation:fx-spacing 500ms var(--ease-out) 560ms both; animation:fx-spacing 500ms var(--ease-out) 560ms both;}
+.fx--bull.play .fx__plus{-webkit-animation:fx-plus-l 400ms var(--ease-back) 640ms both; animation:fx-plus-l 400ms var(--ease-back) 640ms both;}
+.fx--bull.play .fx__pulse i:nth-child(1){-webkit-animation:fx-pulse 800ms var(--ease-out) 520ms both; animation:fx-pulse 800ms var(--ease-out) 520ms both;}
+.fx--bull.play .fx__pulse i:nth-child(2){-webkit-animation:fx-pulse 800ms var(--ease-out) 760ms both; animation:fx-pulse 800ms var(--ease-out) 760ms both;}
+.fx--bull.play .fx__pulse i:nth-child(3){-webkit-animation:fx-pulse 800ms var(--ease-out) 1000ms both; animation:fx-pulse 800ms var(--ease-out) 1000ms both;}
+.fx--bull.outer{--fx-d:1000ms;}
+.fx--bull.outer .fx__core{background:#202020; box-shadow:none;}
+
+/* ---------- A4 · 180 · 2400 ms ---------- */
+.fx--180{--fx-d:2400ms;}
+.fx--180 .fx__veil{background:rgba(21,22,22,.78);}
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){ .fx--180 .fx__veil{background:rgba(21,22,22,.94);} }
+.fx--180 .fx__glow{background:radial-gradient(closest-side, rgba(221,249,106,.45), rgba(221,249,106,.10) 55%, rgba(221,249,106,0));}
+.fx--180 .fx__burst{position:absolute; left:50%; top:470px; width:0; height:0;}
+.fx--180 .fx__burst span{position:absolute; left:0; top:0;}
+.fx--180 .fx__burst i{position:absolute; left:300px; top:-3px; width:520px; height:6px; border-radius:3px; background:#DDF96A;
+  -webkit-transform-origin:-300px 50%; transform-origin:-300px 50%; opacity:0;}
+.fx--180 .fx__burst span:nth-child(1){-webkit-transform:rotate(0deg); transform:rotate(0deg);}
+.fx--180 .fx__burst span:nth-child(2){-webkit-transform:rotate(30deg); transform:rotate(30deg);}
+.fx--180 .fx__burst span:nth-child(3){-webkit-transform:rotate(60deg); transform:rotate(60deg);}
+.fx--180 .fx__burst span:nth-child(4){-webkit-transform:rotate(90deg); transform:rotate(90deg);}
+.fx--180 .fx__burst span:nth-child(5){-webkit-transform:rotate(120deg); transform:rotate(120deg);}
+.fx--180 .fx__burst span:nth-child(6){-webkit-transform:rotate(150deg); transform:rotate(150deg);}
+.fx--180 .fx__burst span:nth-child(7){-webkit-transform:rotate(180deg); transform:rotate(180deg);}
+.fx--180 .fx__burst span:nth-child(8){-webkit-transform:rotate(210deg); transform:rotate(210deg);}
+.fx--180 .fx__burst span:nth-child(9){-webkit-transform:rotate(240deg); transform:rotate(240deg);}
+.fx--180 .fx__burst span:nth-child(10){-webkit-transform:rotate(270deg); transform:rotate(270deg);}
+.fx--180 .fx__burst span:nth-child(11){-webkit-transform:rotate(300deg); transform:rotate(300deg);}
+.fx--180 .fx__burst span:nth-child(12){-webkit-transform:rotate(330deg); transform:rotate(330deg);}
+.fx--180 .fx__word{top:170px; font-size:560px; background-image:linear-gradient(180deg, #F3FFAC 0%, #DDF96A 60%, #A9C93A 100%);}
+.fx--180 .fx__sub{position:absolute; left:0; right:0; top:700px; text-align:center; color:#F2F4F4; font-size:30px; font-weight:300; letter-spacing:.42em; opacity:0;}
+.fx--180 .fx__chips{position:absolute; left:50%; top:790px; width:600px; margin-left:-300px; display:flex; gap:20px; justify-content:center;}
+.fx--180 .fx__chips span{width:180px; height:110px; border-radius:var(--r-field); background:var(--coral); color:#202020;
+  display:flex; align-items:center; justify-content:center; font-size:48px; opacity:0;}
+.fx--180.play .fx__glow{-webkit-animation:fx-glow-pulse 900ms var(--ease-out) 0ms both, fx-breathe 700ms ease-in-out 900ms 2; animation:fx-glow-pulse 900ms var(--ease-out) 0ms both, fx-breathe 700ms ease-in-out 900ms 2;}
+.fx--180.play .fx__burst i{-webkit-animation:fx-burst 700ms var(--ease-out) 280ms both; animation:fx-burst 700ms var(--ease-out) 280ms both;}
+.fx--180.play .fx__word{-webkit-animation:fx-word-in 560ms var(--ease-back) 120ms both; animation:fx-word-in 560ms var(--ease-back) 120ms both;}
+.fx--180.play .fx__sub{-webkit-animation:fx-spacing 600ms var(--ease-out) 600ms both; animation:fx-spacing 600ms var(--ease-out) 600ms both;}
+.fx--180.play .fx__chips span:nth-child(1){-webkit-animation:fx-drop 360ms var(--ease-out) 800ms both; animation:fx-drop 360ms var(--ease-out) 800ms both;}
+.fx--180.play .fx__chips span:nth-child(2){-webkit-animation:fx-drop 360ms var(--ease-out) 920ms both; animation:fx-drop 360ms var(--ease-out) 920ms both;}
+.fx--180.play .fx__chips span:nth-child(3){-webkit-animation:fx-drop 360ms var(--ease-out) 1040ms both; animation:fx-drop 360ms var(--ease-out) 1040ms both;}
+
+/* ---------- A5 · Finish 100+ · 1600 ms ---------- */
+.fx--finish{--fx-d:1600ms;}
+.fx--finish .fx__glow{background:radial-gradient(closest-side, rgba(61,187,122,.40), rgba(221,249,106,.18) 55%, rgba(221,249,106,0));}
+.fx--finish .fx__ring{border:3px solid rgba(61,187,122,.6);}
+.fx--finish .fx__ring.r1{width:640px; height:640px; margin:-320px 0 0 -320px;}
+.fx--finish .fx__ring.r2{width:900px; height:900px; margin:-450px 0 0 -450px; border-width:1px;}
+.fx--finish .fx__word{top:200px; font-size:420px; background-image:linear-gradient(180deg, #202020 0%, #202020 50%, #3DBB7A 100%);}
+.fx--finish .fx__way{position:absolute; left:0; right:0; top:640px; display:flex; gap:16px; justify-content:center;}
+.fx--finish .fx__way span{padding:14px 24px; border-radius:var(--r-field); font-size:40px; opacity:0;}
+.fx--finish.play .fx__glow{-webkit-animation:fx-glow-pulse 700ms var(--ease-out) 0ms both; animation:fx-glow-pulse 700ms var(--ease-out) 0ms both;}
+.fx--finish.play .fx__word{-webkit-animation:fx-word-in 480ms var(--ease-back) 100ms both; animation:fx-word-in 480ms var(--ease-back) 100ms both;}
+.fx--finish.play .r1{-webkit-animation:fx-ring-out 600ms var(--ease-out) 160ms both; animation:fx-ring-out 600ms var(--ease-out) 160ms both;}
+.fx--finish.play .r2{-webkit-animation:fx-ring-out 600ms var(--ease-out) 260ms both; animation:fx-ring-out 600ms var(--ease-out) 260ms both;}
+.fx--finish.play .fx__way span:nth-child(1){-webkit-animation:fx-fade-up 300ms var(--ease-out) 420ms both; animation:fx-fade-up 300ms var(--ease-out) 420ms both;}
+.fx--finish.play .fx__way span:nth-child(2){-webkit-animation:fx-fade-up 300ms var(--ease-out) 520ms both; animation:fx-fade-up 300ms var(--ease-out) 520ms both;}
+.fx--finish.play .fx__way span:nth-child(3){-webkit-animation:fx-fade-up 300ms var(--ease-out) 620ms both; animation:fx-fade-up 300ms var(--ease-out) 620ms both;}
+
+/* ---------- A6 · Shanghai! · 1600 ms ---------- */
+.fx--shanghai{--fx-d:1600ms;}
+.fx--shanghai .fx__glow{background:radial-gradient(closest-side, rgba(255,107,94,.32), rgba(221,249,106,.20) 55%, rgba(221,249,106,0));}
+.fx--shanghai .fx__chips{position:absolute; left:50%; top:250px; width:720px; margin-left:-360px; display:flex; gap:24px; justify-content:center;}
+.fx--shanghai .fx__chips span{width:210px; height:150px; border-radius:var(--r-tile); display:flex; align-items:center; justify-content:center; font-size:64px; opacity:0;}
+.fx--shanghai .fx__word{top:500px; font-size:190px; font-weight:400; letter-spacing:.02em;}
+.fx--shanghai.play .fx__glow{-webkit-animation:fx-glow-pulse 700ms var(--ease-out) 0ms both; animation:fx-glow-pulse 700ms var(--ease-out) 0ms both;}
+.fx--shanghai.play .fx__chips span:nth-child(1){-webkit-animation:fx-drop 320ms var(--ease-out) 60ms both; animation:fx-drop 320ms var(--ease-out) 60ms both;}
+.fx--shanghai.play .fx__chips span:nth-child(2){-webkit-animation:fx-drop 320ms var(--ease-out) 180ms both; animation:fx-drop 320ms var(--ease-out) 180ms both;}
+.fx--shanghai.play .fx__chips span:nth-child(3){-webkit-animation:fx-drop 320ms var(--ease-out) 300ms both; animation:fx-drop 320ms var(--ease-out) 300ms both;}
+.fx--shanghai.play .fx__word{-webkit-animation:fx-stamp 420ms var(--ease-out) 520ms both; animation:fx-stamp 420ms var(--ease-out) 520ms both;}
+
+/* ---------- A7 · Leg gewonnen · 2200 ms ---------- */
+.fx--leg{--fx-d:2200ms;}
+.fx--leg .fx__band{position:absolute; left:0; top:300px; width:100%; height:480px; background:var(--pc,var(--p1)); opacity:.9;
+  -webkit-transform-origin:0 50%; transform-origin:0 50%; -webkit-transform:scaleX(0); transform:scaleX(0);}
+.fx--leg .fx__band2{position:absolute; left:0; top:300px; width:100%; height:480px;
+  background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.55) 100%);}
+.fx--leg .fx__who{position:absolute; left:0; right:0; top:360px; display:flex; align-items:center; justify-content:center; gap:40px; opacity:0;}
+.fx--leg .fx__who .avatar{--av:220px;}
+.fx--leg .fx__who b{display:block; font-size:150px; font-weight:300; letter-spacing:-.04em; line-height:1;}
+.fx--leg .fx__who small{display:block; font-size:30px; margin-top:12px;}
+.fx--leg.play .fx__band{-webkit-animation:fx-wipe 520ms var(--ease-out) 0ms both; animation:fx-wipe 520ms var(--ease-out) 0ms both;}
+.fx--leg.play .fx__who{-webkit-animation:fx-fade-up 480ms var(--ease-out) 380ms both; animation:fx-fade-up 480ms var(--ease-out) 380ms both;}
+.fx--leg.play .fx__who .avatar{-webkit-animation:fx-core 460ms var(--ease-back) 380ms both; animation:fx-core 460ms var(--ease-back) 380ms both;}
+
+/* ---------- A8 · Spiel gewonnen · Auftakt 4000 ms, danach Dauerfeier bis Klick ---------- */
+.fx--winner{--fx-d:4000ms; z-index:var(--z-winner); pointer-events:auto;}
+.fx--winner.play .fx__veil, .fx--winner.play .fx__stage{-webkit-animation:fx-hold 4000ms linear both; animation:fx-hold 4000ms linear both;}
+.fx--winner .fx__stage{pointer-events:auto;}
+.fx--winner .fx__veil{background:linear-gradient(150deg, rgba(243,255,172,.94) 0%, rgba(221,249,106,.82) 45%, rgba(230,233,233,.88) 100%);}
+
+/* Strahlenkranz hinter dem Gewinner – dreht langsam, solange der Screen steht */
+.fx--winner .fx__rays{position:absolute; left:50%; top:470px; width:1900px; height:1900px; margin:-950px 0 0 -950px; border-radius:50%; opacity:0;
+  background:repeating-conic-gradient(from 0deg, rgba(255,255,255,.8) 0deg 5deg, rgba(255,255,255,0) 5deg 15deg);
+  -webkit-mask-image:radial-gradient(closest-side, #000 22%, rgba(0,0,0,0) 72%); mask-image:radial-gradient(closest-side, #000 22%, rgba(0,0,0,0) 72%);}
+.fx--winner .fx__glow{top:470px; background:radial-gradient(closest-side, rgba(255,255,255,.9), rgba(255,255,255,0));}
+
+/* Feuerwerk: vier Buendel aus je 10 Funken, feste Winkel, laufen endlos versetzt */
+.fx--winner .fw{position:absolute; width:0; height:0;}
+.fx--winner .fw span{position:absolute; left:0; top:0;}
+.fx--winner .fw i{position:absolute; left:0; top:-6px; width:12px; height:12px; border-radius:50%; opacity:0; background:var(--fw-c, #FF6B5E);}
+.fx--winner .fw span:nth-child(1){-webkit-transform:rotate(0deg); transform:rotate(0deg);}
+.fx--winner .fw span:nth-child(2){-webkit-transform:rotate(36deg); transform:rotate(36deg);}
+.fx--winner .fw span:nth-child(3){-webkit-transform:rotate(72deg); transform:rotate(72deg);}
+.fx--winner .fw span:nth-child(4){-webkit-transform:rotate(108deg); transform:rotate(108deg);}
+.fx--winner .fw span:nth-child(5){-webkit-transform:rotate(144deg); transform:rotate(144deg);}
+.fx--winner .fw span:nth-child(6){-webkit-transform:rotate(180deg); transform:rotate(180deg);}
+.fx--winner .fw span:nth-child(7){-webkit-transform:rotate(216deg); transform:rotate(216deg);}
+.fx--winner .fw span:nth-child(8){-webkit-transform:rotate(252deg); transform:rotate(252deg);}
+.fx--winner .fw span:nth-child(9){-webkit-transform:rotate(288deg); transform:rotate(288deg);}
+.fx--winner .fw span:nth-child(10){-webkit-transform:rotate(324deg); transform:rotate(324deg);}
+.fx--winner .fw1{left:330px; top:250px; --fw-c:#FF6B5E;}
+.fx--winner .fw2{left:1600px; top:210px; --fw-c:#3DBB7A;}
+.fx--winner .fw3{left:1540px; top:730px; --fw-c:#2AAFC4;}
+.fx--winner .fw4{left:380px; top:750px; --fw-c:#202020;}
+
+/* Konfetti: 24 Stueck in drei Formen und fuenf Farben, fallen endlos mit Seitenschwung */
+.fx--winner .fx__confetti{position:absolute; left:0; top:0; width:100%; height:100%; overflow:hidden;}
+.fx--winner .fx__confetti i{position:absolute; top:0; width:14px; height:28px; border-radius:3px; opacity:0;}
+.fx--winner .fx__confetti i:nth-child(3n+2){width:18px; height:18px; border-radius:50%;}
+.fx--winner .fx__confetti i:nth-child(3n){width:22px; height:12px; border-radius:2px;}
+.fx--winner .fx__confetti i:nth-child(5n+1){background:#FF6B5E;}
+.fx--winner .fx__confetti i:nth-child(5n+2){background:#3DBB7A;}
+.fx--winner .fx__confetti i:nth-child(5n+3){background:#202020;}
+.fx--winner .fx__confetti i:nth-child(5n+4){background:#2AAFC4;}
+.fx--winner .fx__confetti i:nth-child(5n+5){background:#FFFFFF;}
+
+.fx--winner .fx__trophy{position:absolute; left:50%; top:80px; width:190px; height:190px; margin-left:-95px; opacity:0;}
+.fx--winner .fx__star{position:absolute; width:46px; height:46px; opacity:0;}
+.fx--winner .fx__star.s1{left:790px; top:110px;} .fx--winner .fx__star.s2{left:1090px; top:80px;} .fx--winner .fx__star.s3{left:1120px; top:220px; width:30px; height:30px;}
+.fx--winner .fx__banner{position:absolute; left:0; right:0; top:300px; text-align:center; opacity:0;}
+.fx--winner .fx__banner span{display:inline-block; padding:12px 28px; border-radius:var(--r-pill); background:#202020; color:#DDF96A;
+  font-size:22px; letter-spacing:.32em; padding-right:calc(28px - .32em); text-transform:uppercase;}
+.fx--winner .fx__pulse{top:470px;}
+.fx--winner .fx__pulse i{width:220px; height:220px; margin:-110px 0 0 -110px;}
+.fx--winner .fx__who{position:absolute; left:0; right:0; top:370px; display:flex; flex-direction:column; align-items:center; gap:22px; opacity:0;}
+.fx--winner .fx__who .avatar{--av:200px;}
+.fx--winner .fx__who b{font-size:120px; font-weight:300; letter-spacing:-.04em; line-height:1;}
+.fx--winner .fx__who small{font-size:28px; color:var(--lime-ink);}
+.fx--winner .fx__actions{position:absolute; left:0; right:0; top:900px; display:flex; gap:16px; justify-content:center; opacity:0;}
+
+.fx--winner.play .fx__rays{-webkit-animation:fx-fadein 900ms var(--ease-out) 0ms both, fx-spin 30s linear 0ms infinite; animation:fx-fadein 900ms var(--ease-out) 0ms both, fx-spin 30s linear 0ms infinite;}
+.fx--winner.play .fx__glow{-webkit-animation:fx-glow-pulse 800ms var(--ease-out) 300ms both, fx-breathe 2400ms ease-in-out 1100ms infinite; animation:fx-glow-pulse 800ms var(--ease-out) 300ms both, fx-breathe 2400ms ease-in-out 1100ms infinite;}
+.fx--winner.play .fw i{-webkit-animation:fx-spark 2400ms var(--ease-out) infinite both; animation:fx-spark 2400ms var(--ease-out) infinite both;}
+.fx--winner.play .fw1 i{-webkit-animation-delay:300ms; animation-delay:300ms;}
+.fx--winner.play .fw2 i{-webkit-animation-delay:900ms; animation-delay:900ms;}
+.fx--winner.play .fw3 i{-webkit-animation-delay:1500ms; animation-delay:1500ms;}
+.fx--winner.play .fw4 i{-webkit-animation-delay:2100ms; animation-delay:2100ms;}
+.fx--winner.play .fx__confetti i{-webkit-animation:fx-confetti 3000ms linear infinite both; animation:fx-confetti 3000ms linear infinite both;}
+.fx--winner.play .fx__confetti i:nth-child(2n){-webkit-animation-name:fx-confetti-b; animation-name:fx-confetti-b;}
+.fx--winner.play .fx__confetti i:nth-child(3n){-webkit-animation-duration:3600ms; animation-duration:3600ms;}
+.fx--winner.play .fx__confetti i:nth-child(3n+1){-webkit-animation-duration:2700ms; animation-duration:2700ms;}
+.fx--winner.play .fx__confetti i:nth-child(1){left:3%; -webkit-animation-delay:0ms; animation-delay:0ms;}
+.fx--winner.play .fx__confetti i:nth-child(2){left:7%; -webkit-animation-delay:900ms; animation-delay:900ms;}
+.fx--winner.play .fx__confetti i:nth-child(3){left:11%; -webkit-animation-delay:300ms; animation-delay:300ms;}
+.fx--winner.play .fx__confetti i:nth-child(4){left:15%; -webkit-animation-delay:1500ms; animation-delay:1500ms;}
+.fx--winner.play .fx__confetti i:nth-child(5){left:19%; -webkit-animation-delay:600ms; animation-delay:600ms;}
+.fx--winner.play .fx__confetti i:nth-child(6){left:23%; -webkit-animation-delay:1200ms; animation-delay:1200ms;}
+.fx--winner.play .fx__confetti i:nth-child(7){left:27%; -webkit-animation-delay:150ms; animation-delay:150ms;}
+.fx--winner.play .fx__confetti i:nth-child(8){left:31%; -webkit-animation-delay:1800ms; animation-delay:1800ms;}
+.fx--winner.play .fx__confetti i:nth-child(9){left:35%; -webkit-animation-delay:450ms; animation-delay:450ms;}
+.fx--winner.play .fx__confetti i:nth-child(10){left:39%; -webkit-animation-delay:1050ms; animation-delay:1050ms;}
+.fx--winner.play .fx__confetti i:nth-child(11){left:43%; -webkit-animation-delay:750ms; animation-delay:750ms;}
+.fx--winner.play .fx__confetti i:nth-child(12){left:47%; -webkit-animation-delay:1650ms; animation-delay:1650ms;}
+.fx--winner.play .fx__confetti i:nth-child(13){left:51%; -webkit-animation-delay:60ms; animation-delay:60ms;}
+.fx--winner.play .fx__confetti i:nth-child(14){left:55%; -webkit-animation-delay:960ms; animation-delay:960ms;}
+.fx--winner.play .fx__confetti i:nth-child(15){left:59%; -webkit-animation-delay:360ms; animation-delay:360ms;}
+.fx--winner.play .fx__confetti i:nth-child(16){left:63%; -webkit-animation-delay:1560ms; animation-delay:1560ms;}
+.fx--winner.play .fx__confetti i:nth-child(17){left:67%; -webkit-animation-delay:660ms; animation-delay:660ms;}
+.fx--winner.play .fx__confetti i:nth-child(18){left:71%; -webkit-animation-delay:1260ms; animation-delay:1260ms;}
+.fx--winner.play .fx__confetti i:nth-child(19){left:75%; -webkit-animation-delay:210ms; animation-delay:210ms;}
+.fx--winner.play .fx__confetti i:nth-child(20){left:79%; -webkit-animation-delay:1860ms; animation-delay:1860ms;}
+.fx--winner.play .fx__confetti i:nth-child(21){left:83%; -webkit-animation-delay:510ms; animation-delay:510ms;}
+.fx--winner.play .fx__confetti i:nth-child(22){left:87%; -webkit-animation-delay:1110ms; animation-delay:1110ms;}
+.fx--winner.play .fx__confetti i:nth-child(23){left:92%; -webkit-animation-delay:810ms; animation-delay:810ms;}
+.fx--winner.play .fx__confetti i:nth-child(24){left:96%; -webkit-animation-delay:1710ms; animation-delay:1710ms;}
+.fx--winner.play .fx__trophy{-webkit-animation:fx-drop 560ms var(--ease-out) 200ms both, fx-bob 2400ms ease-in-out 900ms infinite; animation:fx-drop 560ms var(--ease-out) 200ms both, fx-bob 2400ms ease-in-out 900ms infinite;}
+.fx--winner.play .fx__star{-webkit-animation:fx-twinkle 1600ms ease-in-out infinite both; animation:fx-twinkle 1600ms ease-in-out infinite both;}
+.fx--winner.play .fx__star.s1{-webkit-animation-delay:700ms; animation-delay:700ms;}
+.fx--winner.play .fx__star.s2{-webkit-animation-delay:1100ms; animation-delay:1100ms;}
+.fx--winner.play .fx__star.s3{-webkit-animation-delay:1500ms; animation-delay:1500ms;}
+.fx--winner.play .fx__banner{-webkit-animation:fx-spacing 500ms var(--ease-out) 420ms both; animation:fx-spacing 500ms var(--ease-out) 420ms both;}
+.fx--winner.play .fx__who{-webkit-animation:fx-fade-up 520ms var(--ease-out) 600ms both; animation:fx-fade-up 520ms var(--ease-out) 600ms both;}
+.fx--winner.play .fx__who .avatar{-webkit-animation:fx-core 520ms var(--ease-back) 600ms both, fx-breathe 1600ms ease-in-out 1300ms infinite; animation:fx-core 520ms var(--ease-back) 600ms both, fx-breathe 1600ms ease-in-out 1300ms infinite;}
+.fx--winner.play .fx__pulse i{-webkit-animation:fx-pulse 1800ms var(--ease-out) infinite both; animation:fx-pulse 1800ms var(--ease-out) infinite both;}
+.fx--winner.play .fx__pulse i:nth-child(1){-webkit-animation-delay:1000ms; animation-delay:1000ms;}
+.fx--winner.play .fx__pulse i:nth-child(2){-webkit-animation-delay:1600ms; animation-delay:1600ms;}
+.fx--winner.play .fx__pulse i:nth-child(3){-webkit-animation-delay:2200ms; animation-delay:2200ms;}
+.fx--winner.play .fx__actions{-webkit-animation:fx-fade-up 400ms var(--ease-out) 1500ms both; animation:fx-fade-up 400ms var(--ease-out) 1500ms both;}
+
+
+/* ---------- B · Karten-Effekte (am Bauteil) ---------- */
+@-webkit-keyframes a-pop{0%{opacity:0; -webkit-transform:scale(.6)} 60%{opacity:1; -webkit-transform:scale(1.08)} 100%{opacity:1; -webkit-transform:scale(1)}}
+@keyframes a-pop{0%{opacity:0; transform:scale(.6)} 60%{opacity:1; transform:scale(1.08)} 100%{opacity:1; transform:scale(1)}}
+@-webkit-keyframes a-ring{0%{opacity:.9; -webkit-transform:scale(1)} 100%{opacity:0; -webkit-transform:scale(1.35)}}
+@keyframes a-ring{0%{opacity:.9; transform:scale(1)} 100%{opacity:0; transform:scale(1.35)}}
+@-webkit-keyframes a-shake{0%,100%{-webkit-transform:translateX(0)} 20%,60%{-webkit-transform:translateX(-6px)} 40%,80%{-webkit-transform:translateX(6px)}}
+@keyframes a-shake{0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)}}
+@-webkit-keyframes a-sweep{0%{-webkit-transform:translateX(-100%)} 100%{-webkit-transform:translateX(100%)}}
+@keyframes a-sweep{0%{transform:translateX(-100%)} 100%{transform:translateX(100%)}}
+@-webkit-keyframes a-slide-in{0%{opacity:0; -webkit-transform:translateX(40px)} 100%{opacity:1; -webkit-transform:translateX(0)}}
+@keyframes a-slide-in{0%{opacity:0; transform:translateX(40px)} 100%{opacity:1; transform:translateX(0)}}
+@-webkit-keyframes a-blink{0%,100%{opacity:1} 50%{opacity:.3}}
+@keyframes a-blink{0%,100%{opacity:1} 50%{opacity:.3}}
+@-webkit-keyframes a-bump{0%{-webkit-transform:scale(1)} 40%{-webkit-transform:scale(1.12)} 100%{-webkit-transform:scale(1)}}
+@keyframes a-bump{0%{transform:scale(1)} 40%{transform:scale(1.12)} 100%{transform:scale(1)}}
+@-webkit-keyframes a-line{0%{-webkit-transform:scaleX(0)} 100%{-webkit-transform:scaleX(1)}}
+@keyframes a-line{0%{transform:scaleX(0)} 100%{transform:scaleX(1)}}
+@-webkit-keyframes a-wobble{0%,100%{-webkit-transform:rotate(0)} 20%{-webkit-transform:rotate(-3deg)} 40%{-webkit-transform:rotate(3deg)} 60%{-webkit-transform:rotate(-2deg)} 80%{-webkit-transform:rotate(1deg)}}
+@keyframes a-wobble{0%,100%{transform:rotate(0)} 20%{transform:rotate(-3deg)} 40%{transform:rotate(3deg)} 60%{transform:rotate(-2deg)} 80%{transform:rotate(1deg)}}
+@-webkit-keyframes a-fall{0%{opacity:0; -webkit-transform:translateY(-30px) rotate(-12deg)} 70%{opacity:1; -webkit-transform:translateY(4px) rotate(-6deg)} 100%{opacity:1; -webkit-transform:translateY(0) rotate(-6deg)}}
+@keyframes a-fall{0%{opacity:0; transform:translateY(-30px) rotate(-12deg)} 70%{opacity:1; transform:translateY(4px) rotate(-6deg)} 100%{opacity:1; transform:translateY(0) rotate(-6deg)}}
+@-webkit-keyframes a-flash{0%,100%{opacity:0} 20%,60%{opacity:1} 40%,80%{opacity:.2}}
+@keyframes a-flash{0%,100%{opacity:0} 20%,60%{opacity:1} 40%,80%{opacity:.2}}
+@-webkit-keyframes a-stamp{0%{opacity:0; -webkit-transform:scale(1.6) rotate(-8deg)} 100%{opacity:1; -webkit-transform:scale(1) rotate(-8deg)}}
+@keyframes a-stamp{0%{opacity:0; transform:scale(1.6) rotate(-8deg)} 100%{opacity:1; transform:scale(1) rotate(-8deg)}}
+@-webkit-keyframes a-out-down{0%{opacity:1; -webkit-transform:translateY(0)} 100%{opacity:0; -webkit-transform:translateY(24px)}}
+@keyframes a-out-down{0%{opacity:1; transform:translateY(0)} 100%{opacity:0; transform:translateY(24px)}}
+@-webkit-keyframes a-in-down{0%{opacity:0; -webkit-transform:translateY(-24px)} 100%{opacity:1; -webkit-transform:translateY(0)}}
+@keyframes a-in-down{0%{opacity:0; transform:translateY(-24px)} 100%{opacity:1; transform:translateY(0)}}
+@-webkit-keyframes a-drop-card{0%{-webkit-transform:translateY(0)} 30%{-webkit-transform:translateY(10px)} 100%{-webkit-transform:translateY(0)}}
+@keyframes a-drop-card{0%{transform:translateY(0)} 30%{transform:translateY(10px)} 100%{transform:translateY(0)}}
+@-webkit-keyframes a-bob{0%,100%{-webkit-transform:translateY(0)} 50%{-webkit-transform:translateY(-10px)}}
+@keyframes a-bob{0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)}}
+@-webkit-keyframes a-pulse{0%,100%{-webkit-transform:scale(1); opacity:1} 50%{-webkit-transform:scale(1.06); opacity:.8}}
+@keyframes a-pulse{0%,100%{transform:scale(1); opacity:1} 50%{transform:scale(1.06); opacity:.8}}
+@-webkit-keyframes a-toast{0%{opacity:0; -webkit-transform:translateY(-12px)} 8%{opacity:1; -webkit-transform:translateY(0)} 90%{opacity:1; -webkit-transform:translateY(0)} 100%{opacity:0; -webkit-transform:translateY(-6px)}}
+@keyframes a-toast{0%{opacity:0; transform:translateY(-12px)} 8%{opacity:1; transform:translateY(0)} 90%{opacity:1; transform:translateY(0)} 100%{opacity:0; transform:translateY(-6px)}}
+@-webkit-keyframes a-toast-fade{0%{opacity:0} 5%{opacity:1} 92%{opacity:1} 100%{opacity:0}}
+@keyframes a-toast-fade{0%{opacity:0} 5%{opacity:1} 92%{opacity:1} 100%{opacity:0}}
+@-webkit-keyframes a-float{0%,100%{-webkit-transform:translateY(0)} 50%{-webkit-transform:translateY(-12px)}}
+@keyframes a-float{0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)}}
+
+/* B1 Treffer Single – Chip ploppt rein · 260 ms */
+.anim-single.play{-webkit-animation:a-pop 260ms var(--ease-back) both; animation:a-pop 260ms var(--ease-back) both;}
+/* B2 Treffer Double – Pop + Mint-Ring laeuft nach aussen · 500 ms */
+.anim-double{position:relative;}
+.anim-double::after{content:''; position:absolute; left:-4px; top:-4px; right:-4px; bottom:-4px; border-radius:14px; border:3px solid var(--mint); opacity:0; pointer-events:none;}
+.anim-double.play{-webkit-animation:a-pop 260ms var(--ease-back) both; animation:a-pop 260ms var(--ease-back) both;}
+.anim-double.play::after{-webkit-animation:a-ring 500ms var(--ease-out) 120ms both; animation:a-ring 500ms var(--ease-out) 120ms both;}
+/* B3 Treffer Triple (Chip) – wie Double in Coral; Vollbild A2 laeuft parallel */
+.anim-triple{position:relative;}
+.anim-triple::after{content:''; position:absolute; left:-4px; top:-4px; right:-4px; bottom:-4px; border-radius:14px; border:3px solid var(--coral); opacity:0; pointer-events:none;}
+.anim-triple.play{-webkit-animation:a-pop 260ms var(--ease-back) both; animation:a-pop 260ms var(--ease-back) both;}
+.anim-triple.play::after{-webkit-animation:a-ring 500ms var(--ease-out) 120ms both; animation:a-ring 500ms var(--ease-out) 120ms both;}
+/* B4 Daneben (Miss) – Chip schuettelt · 360 ms */
+.anim-miss.play{-webkit-animation:a-pop 200ms var(--ease-out) both, a-shake 360ms ease-in-out 200ms both; animation:a-pop 200ms var(--ease-out) both, a-shake 360ms ease-in-out 200ms both;}
+/* B5 Naechster Spieler – Lichtkante faehrt ueber die neue Karte · 600 ms */
+.anim-turn{position:relative; overflow:hidden;}
+.anim-turn::before{content:''; position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;
+  background:linear-gradient(100deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.75) 50%, rgba(255,255,255,0) 70%);
+  -webkit-transform:translateX(-100%); transform:translateX(-100%);}
+.anim-turn.play::before{-webkit-animation:a-sweep 600ms var(--ease-out) both; animation:a-sweep 600ms var(--ease-out) both;}
+.anim-turn.play .avatar{-webkit-animation:a-pop 420ms var(--ease-back) 120ms both; animation:a-pop 420ms var(--ease-back) 120ms both;}
+/* B6 Spieler im Finish-Bereich – Checkout faehrt rein, Mint-Punkt pulsiert solange */
+.anim-finishrange.play{-webkit-animation:a-slide-in 420ms var(--ease-out) both; animation:a-slide-in 420ms var(--ease-out) both;}
+.anim-finishrange.play .dot{-webkit-animation:a-blink 2000ms ease-in-out 420ms infinite; animation:a-blink 2000ms ease-in-out 420ms infinite;}
+/* B7 Aufnahme 100+ / 140+ – Zahl wippt, Lime-Linie waechst · 700 ms */
+.anim-score{position:relative; display:inline-block;}
+.anim-score::after{content:''; position:absolute; left:0; right:0; bottom:-8px; height:6px; border-radius:3px; background:var(--lime);
+  -webkit-transform:scaleX(0); transform:scaleX(0); -webkit-transform-origin:0 50%; transform-origin:0 50%;}
+.anim-score.play{-webkit-animation:a-bump 420ms var(--ease-back) both; animation:a-bump 420ms var(--ease-back) both;}
+.anim-score.play::after{-webkit-animation:a-line 500ms var(--ease-out) 200ms both; animation:a-line 500ms var(--ease-out) 200ms both;}
+.anim-score.s140::after{background:var(--coral); height:8px;}
+/* B8 Aufnahme unter 20 ("Ups") – Zahl wackelt, Sticker faellt rein · 600 ms */
+.anim-ups.play{-webkit-animation:a-wobble 600ms ease-in-out both; animation:a-wobble 600ms ease-in-out both;}
+.anim-ups.play .sticker{-webkit-animation:a-fall 420ms var(--ease-out) 120ms both; animation:a-fall 420ms var(--ease-out) 120ms both;}
+/* B9 Ueberworfen (Bust) – Coral blitzt 2x, Score schuettelt, Stempel · 900 ms */
+.anim-bust{position:relative;}
+.anim-bust .flash{position:absolute; left:0; top:0; width:100%; height:100%; border-radius:inherit; background:rgba(255,107,94,.35); opacity:0; pointer-events:none;}
+.anim-bust.play .flash{-webkit-animation:a-flash 600ms linear both; animation:a-flash 600ms linear both;}
+.anim-bust.play .bust-score{-webkit-animation:a-shake 420ms ease-in-out 80ms both; animation:a-shake 420ms ease-in-out 80ms both;}
+.anim-bust.play .bust-stamp{-webkit-animation:a-stamp 320ms var(--ease-out) 420ms both; animation:a-stamp 320ms var(--ease-out) 420ms both;}
+.anim-bust.play .strike{-webkit-animation:a-line 300ms var(--ease-out) 300ms both; animation:a-line 300ms var(--ease-out) 300ms both;}
+.strike{position:absolute; left:6%; right:6%; top:50%; height:3px; background:var(--ink); -webkit-transform:scaleX(0); transform:scaleX(0); -webkit-transform-origin:0 50%; transform-origin:0 50%;}
+/* B10 Bermuda: halbiert – alter Wert faellt raus, neuer faellt rein · 800 ms */
+.anim-halved .old{display:inline-block;}
+.anim-halved .new{display:inline-block; opacity:0;}
+.anim-halved.play .old{-webkit-animation:a-out-down 360ms var(--ease-in) both; animation:a-out-down 360ms var(--ease-in) both;}
+.anim-halved.play .new{-webkit-animation:a-in-down 420ms var(--ease-back) 360ms both; animation:a-in-down 420ms var(--ease-back) 360ms both;}
+/* B11 Gotcha: erwischt – getroffene Karte sackt ab, Coral blitzt, Stempel · 800 ms */
+.anim-gotcha.play{-webkit-animation:a-drop-card 500ms var(--ease-out) both; animation:a-drop-card 500ms var(--ease-out) both;}
+.anim-gotcha.play .flash{-webkit-animation:a-flash 600ms linear both; animation:a-flash 600ms linear both;}
+.anim-gotcha.play .bust-stamp{-webkit-animation:a-stamp 320ms var(--ease-out) 300ms both; animation:a-stamp 320ms var(--ease-out) 300ms both;}
+/* B12 Pfeile ziehen – drei Pfeile wippen versetzt, bis das Board leer ist */
+.anim-pull i{display:inline-block;}
+.anim-pull.play i{-webkit-animation:a-bob 1200ms ease-in-out infinite; animation:a-bob 1200ms ease-in-out infinite;}
+.anim-pull.play i:nth-child(2){-webkit-animation-delay:150ms; animation-delay:150ms;}
+.anim-pull.play i:nth-child(3){-webkit-animation-delay:300ms; animation-delay:300ms;}
+/* B13 Bull-Off laeuft – Bull-Ring pulsiert, solange ausgeworfen wird */
+.anim-bulloff.play{-webkit-animation:a-pulse 1400ms ease-in-out infinite; animation:a-pulse 1400ms ease-in-out infinite;}
+
+
+/* ---------- C · Hinweise ---------- */
+/* C1 Toast – faellt rein, steht 3,2 s, blendet aus (gesamt 3600 ms) */
+.toast.play{-webkit-animation:a-toast 3600ms var(--ease-out) both; animation:a-toast 3600ms var(--ease-out) both;}
+.toast.stay.play{-webkit-animation:a-in-down 300ms var(--ease-out) both; animation:a-in-down 300ms var(--ease-out) both;}  /* Fehler bleiben, bis behoben */
+/* C2 Erkennung pausiert – Badge mit blinkendem Punkt, dauerhaft */
+.badge-paused{display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:var(--r-pill);
+  background:var(--coral-soft); color:var(--ink); font-size:var(--fs-meta);}
+.badge-paused .dot{background:var(--coral); -webkit-animation:a-blink 1600ms ease-in-out infinite; animation:a-blink 1600ms ease-in-out infinite;}
+/* C3 Leerlauf – Logo schwebt langsam (nach 5 min ohne Wurf) */
+.idle-mark{-webkit-animation:a-float 6000ms ease-in-out infinite; animation:a-float 6000ms ease-in-out infinite;}
+
+
+/* --------------------------------------------------------------------
+   10 · REDUZIERTE BEWEGUNG
+   Greift, wenn im System "Animationen reduzieren" aktiv ist (Windows:
+   Einstellungen > Barrierefreiheit > Visuelle Effekte > Animationseffekte aus).
+   Information bleibt, Bewegung geht: alles wird zu einer kurzen Blende,
+   Endlos-Animationen stoppen, Hinweise bleiben 3,6 s lesbar.
+   -------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce){
+  :root:not(.force-motion) *, :root:not(.force-motion) *::before, :root:not(.force-motion) *::after{
+    -webkit-animation-duration:200ms !important; animation-duration:200ms !important;
+    -webkit-animation-delay:0ms !important; animation-delay:0ms !important;
+    -webkit-animation-iteration-count:1 !important; animation-iteration-count:1 !important;
+    transition-duration:0ms !important;
+  }
+  :root:not(.force-motion) .fx.play .fx__veil, :root:not(.force-motion) .fx.play .fx__stage{-webkit-animation:fx-life 1600ms linear both !important; animation:fx-life 1600ms linear both !important;}
+  :root:not(.force-motion) .fx--winner.play .fx__veil, :root:not(.force-motion) .fx--winner.play .fx__stage{-webkit-animation:fx-hold 200ms linear both !important; animation:fx-hold 200ms linear both !important;}
+  /* Hinweise bleiben gleich lang lesbar – nur ohne Bewegung */
+  :root:not(.force-motion) .toast.play{-webkit-animation:a-toast-fade 3600ms linear both !important; animation:a-toast-fade 3600ms linear both !important;}
+  :root:not(.force-motion) .fx__confetti, :root:not(.force-motion) .fx__burst, :root:not(.force-motion) .fx__ring,
+  :root:not(.force-motion) .fx__pulse, :root:not(.force-motion) .fx__rays, :root:not(.force-motion) .fw, :root:not(.force-motion) .fx__star{display:none;}
+}
+/* .force-motion am <html>: volle Effekte trotz System-Einstellung – nur wenn der
+   Nutzer das in den Einstellungen ausdruecklich waehlt (Intensitaet "Ballern"). */

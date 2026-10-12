@@ -30,7 +30,7 @@ done
 echo "== systemd-Dienst"
 sudo tee /etc/systemd/system/dartcam.service >/dev/null <<UNIT
 [Unit]
-Description=DartCam
+Description=Bulls n Bier (DartCam)
 After=network-online.target
 Wants=network-online.target
 

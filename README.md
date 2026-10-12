@@ -1,6 +1,6 @@
-# DartCam
+# Bulls’n’Bier
 
-Kamerabasierte Dart-Erkennung (Autodarts-Nachbau) – läuft unter **Linux und Windows**, jeweils live mit Kameras oder als **Simulator** zum Testen.
+Die Darts-App für Buschi’s Ballerbude: kamerabasierte Dart-Erkennung (Autodarts-Nachbau) – läuft unter **Linux und Windows**, jeweils live mit Kameras oder als **Simulator** zum Testen. Oberfläche nach Styleguide v01 (Bühne 1920 × 1080, skaliert auf jeden Bildschirm).
 
 ## Systemanforderungen
 
@@ -13,7 +13,9 @@ Kamerabasierte Dart-Erkennung (Autodarts-Nachbau) – läuft unter **Linux und W
 | Licht | – | LED-Ring, konstantes Licht |
 | Simulator | jeder PC mit Python 3.10+ und Browser | |
 
-Sprachausgabe: **Piper** (natürliche Offline-Stimmen, läuft auf dem DartCam-Rechner, Linux + Windows). Fallback: Systemstimme des Browsers.
+Sprachausgabe: **Piper** (natürliche Offline-Stimmen, Linux + Windows). Häufige Ansagen (Felder, Punkte, Namen, Restwerte) werden im Hintergrund vorberechnet, damit es im Spiel sofort spricht. Fallback: Systemstimme des Browsers.
+
+Avatare: **DiceBear „Notionists“** – einmal von api.dicebear.com geladen, danach lokal in `data/avatars/`. Ohne Netz bleibt die Silhouette.
 
 ## Linux
 
@@ -67,10 +69,10 @@ X01 · Cricket (Standard / Cut Throat / No Score, Tactics) · Bermuda · Shangha
 
 | Bereich | |
 |---|---|
-| Anzeige | Vorwürfe ausblenden, Spielerfarben, Animationen je Ereignis |
+| Anzeige | Vorwürfe ausblenden, Hell/Nacht, Gastgeber, Animationen je Ereignis + Vorschau, Intensität Dezent/Normal/Ballern |
 | Sprachausgabe | DE/EN, Piper- oder Systemstimme, Tempo/Lautstärke, jede Ansage an/aus |
 | Ansagetexte | alle Texte editierbar: `{name}` `{score}` `{points}` `{n}` `{dart}` `{target}` |
-| WLED | IP(s), je Ereignis Effekt/Preset, Farben (auch Spielerfarbe), Tempo, Dauer, Test |
+| WLED | IP(s), je Ereignis Effekt/Preset (Liste vom Gerät, nach Namen sortiert), Farben (auch Spielerfarbe), Tempo, Dauer, Test (endet nach max. 10 s) |
 
 ```bash
 python run.py --get-voice                       # Standard-Stimmen laden

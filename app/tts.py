@@ -112,3 +112,81 @@ def clean(text):
     """Punkt direkt nach Zahl würde als Ordinalzahl gelesen („vierzigster“) → entfernen."""
     text = re.sub(r"(\d)\s*\.(?=\s*(?:$|[,;!?]))", r"\1", text.strip())
     return re.sub(r"\s+", " ", text)
+
+
+# ---------------- Vorberechnung (Warmup) ----------------
+# Jede Ansage wird beim ersten Mal erzeugt und dann gecacht. Damit es im Spiel sofort spricht,
+# werden die häufigen Sätze vorab im Hintergrund erzeugt: Zahlen/Felder beim Start,
+# Spielernamen + Restwerte beim Spielstart.
+import queue as _queue
+
+_q = _queue.PriorityQueue()
+_seq = 0
+_worker = None
+_state = {"done": 0, "queued": 0}
+
+
+def _fill(t, **v):
+    return re.sub(r"\{(\w+)\}", lambda m: str(v.get(m.group(1), "")), t or "")
+
+
+def dart_text(name, T):
+    if name == "BULL":
+        return T["bull"]
+    if name == "25":
+        return T["outer"]
+    if name == "MISS":
+        return T["miss"]
+    return _fill({"S": T["single"], "D": T["double"], "T": T["triple"]}[name[0]], n=name[1:])
+
+
+def base_phrases(T):
+    out = [dart_text(f"{m}{n}", T) for n in range(1, 21) for m in "SDT"] + [dart_text(x, T) for x in ("BULL", "25", "MISS")]
+    out += [T["t180"], T["noscore"]] + [_fill(T["turn"], points=p) for p in range(1, 180)]
+    out += [T[k] for k in ("bust", "halved", "shanghai", "takeout", "unknown", "cam_error")]
+    return out
+
+
+def player_phrases(T, names, finish_scores):
+    hi, lo = [], []
+    for n in names:
+        hi += [_fill(T[k], name=n) for k in ("start", "next", "leg", "match", "bulloff", "bulloff_win", "gotcha")]
+        lo += [_fill(T["next_remaining"], name=n, score=s) for s in finish_scores]
+        lo += [_fill(T["remaining"], name=n, score=s) for s in finish_scores]
+    return hi, lo
+
+
+def warm(texts, voice, rate, prio=5):
+    global _seq, _worker
+    if not available() or voice not in installed():
+        return
+    for t in texts:
+        t = clean(t)
+        if not t:
+            continue
+        key = hashlib.sha1(f"{voice}|{rate:.2f}|{t}".encode()).hexdigest()
+        if os.path.exists(os.path.join(CACHE_DIR, key + ".wav")):
+            continue
+        _seq += 1
+        _state["queued"] += 1
+        _q.put((prio, _seq, t, voice, rate))
+    if _worker is None or not _worker.is_alive():
+        _worker = threading.Thread(target=_run, daemon=True, name="tts-warm")
+        _worker.start()
+
+
+def _run():
+    while True:
+        try:
+            _, _, t, v, r = _q.get(timeout=30)
+        except _queue.Empty:
+            return
+        try:
+            synth(t, v, r)
+        except Exception:
+            pass
+        _state["done"] += 1
+
+
+def warm_status():
+    return {"pending": _q.qsize(), **_state}

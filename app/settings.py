@@ -32,6 +32,9 @@ DEFAULTS = {
     "display": {
         "hide_previous": True,      # Würfe des Vorspielers ausblenden, sobald der Nächste dran ist
         "animations": True,
+        "intensity": "normal",      # dezent | normal | ballern (Styleguide §7)
+        "theme": "light",           # light | night
+        "host": None,               # Spieler-ID des Gastgebers (Begrüßung, Avatar im Header)
         "anim": {k: True for k in _fx.EVENTS},
         "player_colors": list(_fx.PLAYER_COLORS),
     },
