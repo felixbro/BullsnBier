@@ -17,19 +17,21 @@
     <button data-tab="cams">Kameras</button>
     <button data-tab="settings">Einstellungen</button>
   </nav>
-  <div class="status"><span id="dot" class="dot"></span><button id="voice" title="Caller">🔊</button></div>
+  <div class="status"><span id="dot" class="dot" title="Verbindung"></span><button id="voice" title="Ansagen an/aus">🔊</button></div>
 </header>
+<div id="errbar" class="errbar hidden"></div>
 
 <main>
 <!-- SPIEL -->
 <section id="play" class="tab on">
+  <div id="gamebar" class="gamebar"></div>
   <div id="scoreboard" class="scoreboard"></div>
   <div class="playgrid">
     <div class="boardwrap"><svg id="board" viewBox="-205 -205 410 410"></svg></div>
     <div class="side">
+      <div id="info" class="info"></div>
       <div id="turn" class="turn"></div>
       <div id="checkout" class="checkout"></div>
-      <div id="banner" class="banner"></div>
       <div class="actions">
         <button id="btnNext" class="big">Pfeile gezogen ⟶</button>
         <button id="btnUndo">Rückgängig</button>
@@ -40,39 +42,41 @@
         <div id="nums" class="nums"></div>
       </details>
       <div id="sim" class="sim hidden">
-        <b>Simulator</b><span class="hint" style="flex-basis:100%">Aufs Board klicken = Wurf an genau dieser Stelle. Oder zufällig streuen:</span>
-        <button data-aim="T20">→ T20</button><button data-aim="T19">→ T19</button>
-        <button data-aim="BULL">→ Bull</button><button id="simOut">Takeout</button>
+        <b>Simulator</b>
+        <span class="hint">Aufs Board klicken = Wurf genau dort. Zufällig streuen:</span>
+        <div class="row"><button data-aim="T20">→ T20</button><button data-aim="T19">→ T19</button><button data-aim="D16">→ D16</button><button data-aim="BULL">→ Bull</button><button id="simOut">Takeout</button></div>
+        <span class="hint">Fehler simulieren:</span>
+        <div class="row"><button data-ev="unknown">Nicht erkannt</button><button data-ev="cal_warn">Kalibrierung ungenau</button><button data-ev="cam_error">Kamera weg</button><button data-ev="clear">Fehler weg</button></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- SETUP -->
+<!-- NEU -->
 <section id="setup" class="tab">
   <div class="card">
-    <h2>Neues Spiel</h2>
-    <div class="row seg" id="mode">
-      <button data-v="x01" class="on">X01</button><button data-v="cricket">Cricket</button><button data-v="atc">Around the Clock</button>
-    </div>
-    <div id="x01opts">
-      <label>Start</label>
-      <div class="row seg" id="start"><button data-v="301">301</button><button data-v="501" class="on">501</button><button data-v="701">701</button></div>
-      <label>In</label>
-      <div class="row seg" id="in"><button data-v="single" class="on">Single</button><button data-v="double">Double</button><button data-v="master">Master</button></div>
-      <label>Out</label>
-      <div class="row seg" id="out"><button data-v="single">Single</button><button data-v="double" class="on">Double</button><button data-v="master">Master</button></div>
-    </div>
+    <h2>Spielmodus</h2>
+    <div id="modes" class="modes"></div>
+    <div id="modeOpts" class="modeopts"></div>
+  </div>
+  <div class="card">
+    <h2>Match</h2>
     <label>Legs (First to)</label>
-    <div class="row seg" id="legs"><button data-v="1" class="on">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="5">5</button></div>
-    <label>Spieler (Reihenfolge = Antippen)</label>
+    <div class="row seg" id="o_legs"></div>
+    <label>Sets (First to)</label>
+    <div class="row seg" id="o_sets"></div>
+    <label>Wer beginnt?</label>
+    <div class="row seg" id="o_order"><button data-v="list" class="on">Reihenfolge</button><button data-v="random">Zufällig</button><button data-v="bulloff">Bull-Off</button></div>
+  </div>
+  <div class="card">
+    <h2>Spieler <span class="hint">Reihenfolge = Antippen</span></h2>
     <div id="pick" class="pick"></div>
     <div class="row"><input id="guest" placeholder="Gast hinzufügen"><button id="addGuest">+</button></div>
-    <button id="startGame" class="big">Game on</button>
   </div>
+  <button id="startGame" class="big">Game on</button>
 </section>
 
-<!-- STATS -->
+<!-- STATISTIK -->
 <section id="stats" class="tab">
   <div class="card">
     <h2>Spieler</h2>
@@ -81,53 +85,6 @@
   </div>
   <div class="card" id="pstats"></div>
   <div class="card"><h2>Letzte Spiele</h2><div id="glist"></div></div>
-</section>
-
-<!-- EINSTELLUNGEN -->
-<section id="settings" class="tab">
-  <div class="card">
-    <h2>Sprachausgabe</h2>
-    <div class="opts">
-      <label class="sw"><input type="checkbox" data-c="enabled"> Ansagen aktiv (alle Geräte)</label>
-      <label class="sw"><input type="checkbox" id="localMute"> Dieses Gerät stumm</label>
-    </div>
-    <label>Sprache</label>
-    <div class="row seg" id="lang"><button data-v="de">Deutsch</button><button data-v="en">English</button></div>
-    <label>Stimme (nur dieses Gerät)</label>
-    <div class="row"><select id="voiceSel"></select><button id="voiceTest">Probe</button></div>
-    <div id="voiceHint" class="hint"></div>
-    <div class="sliders">
-      <label>Tempo <input type="range" min="0.6" max="1.6" step="0.05" data-c="rate"><output></output></label>
-      <label>Tonhöhe <input type="range" min="0.5" max="1.5" step="0.05" data-c="pitch"><output></output></label>
-      <label>Lautstärke <input type="range" min="0" max="1" step="0.05" data-c="volume"><output></output></label>
-    </div>
-  </div>
-  <div class="card">
-    <h2>Was wird angesagt?</h2>
-    <div class="opts">
-      <label class="sw"><input type="checkbox" data-c="say_start"> Spielstart + wer beginnt</label>
-      <label class="sw"><input type="checkbox" data-c="say_dart"> Jeder einzelne Dart</label>
-      <label class="sw"><input type="checkbox" data-c="say_turn"> Punkte der Aufnahme</label>
-      <label class="sw"><input type="checkbox" data-c="say_bust"> Überworfen</label>
-      <label class="sw"><input type="checkbox" data-c="say_next"> Wer als Nächstes dran ist</label>
-      <label class="sw"><input type="checkbox" data-c="say_leg"> Leg gewonnen</label>
-      <label class="sw"><input type="checkbox" data-c="say_match"> Spiel gewonnen</label>
-      <label class="sw"><input type="checkbox" data-c="say_correction"> Korrekturen</label>
-      <label class="sw"><input type="checkbox" data-c="say_takeout"> „Pfeile ziehen“</label>
-    </div>
-    <label>Restpunkte ansagen</label>
-    <div class="row seg" id="remain"><button data-v="off">Nie</button><button data-v="finish">Nur im Finish-Bereich</button><button data-v="always">Immer</button></div>
-  </div>
-  <div class="card">
-    <h2>Ansagetexte <span class="hint" id="textsLang"></span></h2>
-    <p class="hint">Platzhalter: {name} Spieler · {score} Rest · {points} Punkte · {n} Zahl · {dart} Feld. Feld leeren = Standard.</p>
-    <div id="texts" class="texts"></div>
-    <div class="row"><button id="resetSettings">Alles auf Standard</button></div>
-  </div>
-  <div class="card">
-    <h2>Simulator</h2>
-    <label class="sw"><input type="checkbox" data-g="auto_next_sim"> Nach 3 Darts nächster Klick startet direkt die nächste Aufnahme</label>
-  </div>
 </section>
 
 <!-- KAMERAS -->
@@ -143,9 +100,108 @@
   </div>
   <div id="camlist"></div>
 </section>
+
+<!-- EINSTELLUNGEN -->
+<section id="settings" class="tab">
+  <div class="subnav" id="subnav">
+    <button data-sub="s_display" class="on">Anzeige</button>
+    <button data-sub="s_voice">Sprachausgabe</button>
+    <button data-sub="s_texts">Ansagetexte</button>
+    <button data-sub="s_wled">WLED</button>
+  </div>
+
+  <div class="sub on" id="s_display">
+    <div class="card">
+      <h2>Anzeige</h2>
+      <label class="sw"><input type="checkbox" data-s="display.hide_previous"> Würfe des Vorspielers ausblenden, sobald der Nächste dran ist</label>
+      <label class="sw"><input type="checkbox" data-s="game.auto_next_sim"> Simulator: nach 3 Darts startet der nächste Klick direkt die nächste Aufnahme</label>
+      <label>Spielerfarben (Anzeige + WLED)</label>
+      <div id="pcolors" class="pcolors"></div>
+    </div>
+    <div class="card">
+      <h2>Animationen im Browser</h2>
+      <label class="sw"><input type="checkbox" data-s="display.animations"> Animationen aktiv</label>
+      <div id="animList" class="opts"></div>
+    </div>
+  </div>
+
+  <div class="sub" id="s_voice">
+    <div class="card">
+      <h2>Sprachausgabe</h2>
+      <div class="opts">
+        <label class="sw"><input type="checkbox" data-s="caller.enabled"> Ansagen aktiv (alle Geräte)</label>
+        <label class="sw"><input type="checkbox" id="localMute"> Dieses Gerät stumm</label>
+      </div>
+      <label>Sprache</label>
+      <div class="row seg" id="lang"><button data-v="de">Deutsch</button><button data-v="en">English</button></div>
+      <label>Stimme</label>
+      <div class="row seg" id="engine"><button data-v="piper">Natürlich (Piper, offline)</button><button data-v="browser">Browser / System</button></div>
+      <div id="engineBox"></div>
+      <div class="sliders">
+        <label>Tempo <input type="range" min="0.6" max="1.6" step="0.05" data-s="caller.rate"><output></output></label>
+        <label>Tonhöhe <input type="range" min="0.5" max="1.5" step="0.05" data-s="caller.pitch"><output></output></label>
+        <label>Lautstärke <input type="range" min="0" max="1" step="0.05" data-s="caller.volume"><output></output></label>
+      </div>
+      <div class="row"><button id="voiceTest">▶ Probe</button></div>
+    </div>
+    <div class="card">
+      <h2>Was wird angesagt?</h2>
+      <div class="opts">
+        <label class="sw"><input type="checkbox" data-s="caller.say_start"> Spielstart + wer beginnt</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_dart"> Jeder einzelne Dart</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_turn"> Punkte der Aufnahme</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_bust"> Überworfen</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_next"> Wer als Nächstes dran ist</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_target"> Ziel ansagen (ATC, Bermuda …)</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_specials"> Shanghai / Gotcha / Halbiert</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_leg"> Leg gewonnen</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_match"> Spiel gewonnen</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_correction"> Korrekturen</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_takeout"> „Pfeile ziehen“</label>
+        <label class="sw"><input type="checkbox" data-s="caller.say_errors"> Fehler (Kamera, nicht erkannt)</label>
+      </div>
+      <label>Restpunkte ansagen</label>
+      <div class="row seg" id="remain"><button data-v="off">Nie</button><button data-v="finish">Nur im Finish-Bereich</button><button data-v="always">Immer</button></div>
+    </div>
+  </div>
+
+  <div class="sub" id="s_texts">
+    <div class="card">
+      <h2>Ansagetexte <span class="hint" id="textsLang"></span></h2>
+      <p class="hint">Platzhalter: {name} Spieler · {score} Rest · {points} Punkte · {n} Zahl · {dart} Feld · {target} Ziel. Feld leeren = Standard.</p>
+      <div id="texts" class="texts"></div>
+      <div class="row"><button id="resetSettings">Alle Einstellungen auf Standard</button></div>
+    </div>
+  </div>
+
+  <div class="sub" id="s_wled">
+    <div class="card">
+      <h2>WLED</h2>
+      <label class="sw"><input type="checkbox" data-s="wled.enabled"> WLED-Steuerung aktiv</label>
+      <label>IP-Adresse(n) <span class="hint">mehrere kommagetrennt</span></label>
+      <div class="row"><input id="wledHosts" placeholder="192.168.1.50"><button id="wledCheck">Verbindung prüfen</button></div>
+      <div id="wledInfo" class="hint"></div>
+    </div>
+    <div class="card">
+      <h2>Effekte je Ereignis</h2>
+      <p class="hint">Dauer 0 = bleibt bis zum nächsten Ereignis (Grundzustand). „Spielerfarbe“ nutzt die Farbe des jeweiligen Spielers. ▶ testet Effekt + Browser-Animation.</p>
+      <div id="wledFx" class="fxlist"></div>
+    </div>
+  </div>
+</section>
 </main>
 
+<div id="fx" class="fx"><div class="fx-bg"></div><div class="fx-text"></div><div class="fx-sub"></div></div>
 <div id="toast" class="toast"></div>
-<script src="/static/app.js"></script>
+
+<script src="/static/js/core.js"></script>
+<script src="/static/js/caller.js"></script>
+<script src="/static/js/fx.js"></script>
+<script src="/static/js/play.js"></script>
+<script src="/static/js/setup.js"></script>
+<script src="/static/js/stats.js"></script>
+<script src="/static/js/cams.js"></script>
+<script src="/static/js/settings.js"></script>
+<script src="/static/js/boot.js"></script>
 </body>
 </html>

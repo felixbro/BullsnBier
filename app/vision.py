@@ -323,5 +323,6 @@ class Detector(threading.Thread):
             self.on_event({"type": "dart_unknown", "areas": areas})
             return
         s = board.score(*p)
-        self.on_event({"type": "dart", "x": p[0], "y": p[1], "score": s,
+        spread = max((math.hypot(v[0] - p[0], v[1] - p[1]) for v in results.values()), default=0.0)
+        self.on_event({"type": "dart", "x": p[0], "y": p[1], "score": s, "spread": spread,
                        "cams": {k: list(v) for k, v in results.items()}})

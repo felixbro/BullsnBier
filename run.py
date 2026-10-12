@@ -18,6 +18,7 @@ p.add_argument("--host", default=None, help="Bind-Adresse (Standard 0.0.0.0)")
 p.add_argument("--port", type=int, default=None, help="Port (Standard 8090)")
 p.add_argument("--cameras", default=None, help="Kommagetrennt, z. B. /dev/video0,/dev/video2,/dev/video4")
 p.add_argument("--list-cameras", action="store_true", help="Angeschlossene Kameras auflisten und beenden")
+p.add_argument("--get-voice", nargs="*", metavar="STIMME", help="Piper-Stimme(n) laden, Standard: de_DE-thorsten-high en_GB-alan-medium")
 p.add_argument("--data", default=None, help="Datenordner (Standard ./data)")
 a = p.parse_args()
 
@@ -29,6 +30,17 @@ if a.data:
     os.environ["DATA_DIR"] = os.path.abspath(a.data)
 
 from app import config  # noqa: E402  (lädt config.env)
+
+if a.get_voice is not None:
+    from app import tts
+    for v in a.get_voice or ["de_DE-thorsten-high", "en_GB-alan-medium"]:
+        print(f"Lade {v} …", flush=True)
+        try:
+            tts.download(v)
+            print("  ok")
+        except Exception as ex:
+            print(f"  Fehler: {ex}")
+    raise SystemExit(0)
 
 if a.list_cameras:
     from app.vision import list_cameras

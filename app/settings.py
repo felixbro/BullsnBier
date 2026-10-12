@@ -2,6 +2,7 @@
 import copy, json, os
 
 from .config import DATA
+from . import effects as _fx
 FILE = os.path.join(DATA, "settings.json")
 
 DEFAULTS = {
@@ -22,35 +23,68 @@ DEFAULTS = {
         "say_match": True,
         "say_correction": True,
         "say_takeout": False,
+        "say_target": True,         # Ziel ansagen (ATC, Bermuda, Shanghai …)
+        "say_specials": True,       # Shanghai, Gotcha, halbiert
+        "say_errors": True,         # Kamera-/Erkennungsfehler
+        "engine": "piper",          # piper (natürlich, Fallback Systemstimme) | browser
+        "piper_voice": {"de": "de_DE-thorsten-high", "en": "en_GB-alan-medium"},
     },
+    "display": {
+        "hide_previous": True,      # Würfe des Vorspielers ausblenden, sobald der Nächste dran ist
+        "animations": True,
+        "anim": {k: True for k in _fx.EVENTS},
+        "player_colors": list(_fx.PLAYER_COLORS),
+    },
+    "wled": {
+        "enabled": False,
+        "hosts": "",                # z. B. 192.168.1.50 oder mehrere kommagetrennt
+        "effects": copy.deepcopy(_fx.DEFAULTS),
+    },
+    "bulloff": "off",               # off | normal (näher am Bull beginnt)
     "texts": {
         "de": {
-            "start": "Game on! {name} beginnt.",
+            "start": "Game on! {name} beginnt",
             "single": "{n}", "double": "Doppel {n}", "triple": "Triple {n}",
             "bull": "Bullseye", "outer": "Bull", "miss": "Daneben",
             "turn": "{points}", "noscore": "Kein Score", "t180": "Einhundertachtzig!",
             "bust": "Überworfen!",
-            "next": "{name}, du bist dran.",
-            "remaining": "{name}, du brauchst {score}.",
-            "next_remaining": "{name}, du brauchst {score}.",
-            "leg": "Game shot! Leg für {name}.",
+            "next": "{name}, du bist dran",
+            "remaining": "{name}, du brauchst {score}",
+            "next_remaining": "{name}, du brauchst {score}",
+            "leg": "Game shot! Leg für {name}",
             "match": "Game shot and the match! {name} gewinnt!",
             "corrected": "Korrigiert: {dart}",
             "takeout": "Pfeile ziehen",
+            "target": "{name}, Ziel {target}",
+            "bulloff": "Bull-Off. {name}, bitte werfen",
+            "bulloff_win": "{name} beginnt",
+            "shanghai": "Shanghai!",
+            "gotcha": "Erwischt! {name} fällt auf null",
+            "halved": "Halbiert",
+            "unknown": "Pfeil nicht erkannt",
+            "cam_error": "Achtung, Kamera Problem",
         },
         "en": {
-            "start": "Game on! {name} to throw first.",
+            "start": "Game on! {name} to throw first",
             "single": "{n}", "double": "Double {n}", "triple": "Treble {n}",
             "bull": "Bullseye", "outer": "Bull", "miss": "Miss",
             "turn": "{points}", "noscore": "No score", "t180": "One hundred and eighty!",
             "bust": "Bust!",
-            "next": "{name}, you're up.",
-            "remaining": "{name}, you require {score}.",
-            "next_remaining": "{name}, you require {score}.",
-            "leg": "Game shot! Leg to {name}.",
+            "next": "{name}, you're up",
+            "remaining": "{name}, you require {score}",
+            "next_remaining": "{name}, you require {score}",
+            "leg": "Game shot! Leg to {name}",
             "match": "Game shot and the match! {name}!",
             "corrected": "Corrected: {dart}",
             "takeout": "Remove darts",
+            "target": "{name}, target {target}",
+            "bulloff": "Bull off. {name}, throw for the bull",
+            "bulloff_win": "{name} to throw first",
+            "shanghai": "Shanghai!",
+            "gotcha": "Gotcha! {name} back to zero",
+            "halved": "Halved",
+            "unknown": "Dart not detected",
+            "cam_error": "Camera problem",
         },
     },
     "game": {

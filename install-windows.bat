@@ -11,6 +11,7 @@ if not exist .venv\Scripts\python.exe (
   )
   .venv\Scripts\python -m pip install --upgrade pip
   .venv\Scripts\python -m pip install -r requirements.txt || (pause & exit /b 1)
+  .venv\Scripts\python run.py --get-voice
 )
 if not exist config.env copy config.env.example config.env >nul
 

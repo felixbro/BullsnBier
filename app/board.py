@@ -38,7 +38,8 @@ def score(x: float, y: float) -> dict:
         return {"name": f"T{seg}", "value": 3 * seg, "mult": 3, "seg": seg}
     if r >= R_DOUBLE_IN:
         return {"name": f"D{seg}", "value": 2 * seg, "mult": 2, "seg": seg}
-    return {"name": f"S{seg}", "value": seg, "mult": 1, "seg": seg}
+    ring = "inner" if r < R_TRIPLE_IN else "outer"
+    return {"name": f"S{seg}", "value": seg, "mult": 1, "seg": seg, "ring": ring}
 
 
 def from_name(name: str) -> dict:

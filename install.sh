@@ -15,6 +15,8 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
 [ -f config.env ] || cp config.env.example config.env
+echo "== Natürliche Stimmen (Piper)"
+.venv/bin/python run.py --get-voice || true
 sudo usermod -aG video "$USER_NAME"
 
 echo "== Alte Autodarts-Dienste stoppen (falls vorhanden)"
