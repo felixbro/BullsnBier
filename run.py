@@ -8,7 +8,7 @@
 import argparse, os, socket, sys
 
 if sys.stdout is None or sys.stderr is None:  # pythonw (Autostart ohne Konsole) -> Logdatei
-    _log = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "dartcam.log"), "a", buffering=1, encoding="utf-8")
+    _log = open(os.path.join(os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__)), "dartcam.log"), "a", buffering=1, encoding="utf-8")
     sys.stdout = sys.stdout or _log
     sys.stderr = sys.stderr or _log
 
@@ -20,6 +20,7 @@ p.add_argument("--cameras", default=None, help="Kommagetrennt, z. B. /dev/video0
 p.add_argument("--list-cameras", action="store_true", help="Angeschlossene Kameras auflisten und beenden")
 p.add_argument("--get-voice", nargs="*", metavar="STIMME", help="Piper-Stimme(n) laden, Standard: de_DE-thorsten-high en_GB-alan-medium")
 p.add_argument("--data", default=None, help="Datenordner (Standard ./data)")
+p.add_argument("--open", action="store_true", help="Browser nach dem Start öffnen")
 a = p.parse_args()
 
 if a.sim:
@@ -61,4 +62,10 @@ try:
 except Exception:
     ip = "localhost"
 print(f"\n  Bulls'n'Bier {'SIMULATOR' if config.SIM else 'LIVE'}  →  http://localhost:{port}   (im LAN: http://{ip}:{port})\n")
-uvicorn.run("app.main:app", host=host, port=port, log_level="warning")
+if a.open:
+    import threading, webbrowser
+    threading.Timer(1.5, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+if config.FROZEN:
+    print(f"  Daten: {config.DATA}\n  Beenden: dieses Fenster schließen\n")
+from app.main import app  # noqa: E402  (direkt importieren, damit es auch gebündelt funktioniert)
+uvicorn.run(app, host=host, port=port, log_level="warning")

@@ -1,0 +1,45 @@
+# Baut Windows-Installer (.exe) und Linux-Paket (.tar.gz).
+# Start: Actions → "Build" → Run workflow   ·   oder Tag pushen:  git tag v1.0.0 && git push --tags
+name: Build
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt pyinstaller
+      - run: python packaging/build.py
+      - name: Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $env:BNB_VERSION = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME.TrimStart("v") } else { "0.0.$env:GITHUB_RUN_NUMBER" }
+          choco install innosetup -y --no-progress | Out-Null
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" packaging\BullsnBier.iss
+      - uses: actions/upload-artifact@v4
+        with: { name: BullsnBier-Windows, path: dist/BullsnBier-Setup-*.exe }
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt pyinstaller
+      - run: python packaging/build.py
+      - uses: actions/upload-artifact@v4
+        with: { name: BullsnBier-Linux, path: dist/BullsnBier-linux-*.tar.gz }
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with: { files: out/* }

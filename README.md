@@ -45,6 +45,24 @@ autostart-windows.bat        :: optional: Start bei Anmeldung
 
 Python von python.org mit Haken „Add to PATH“. Zugriff von Handy/Tablet: Windows-Firewall für Port 8090 freigeben.
 
+## Fertige App (ohne Python)
+
+Unter **GitHub → Actions → Build → Run workflow** (oder per Tag `git tag v1.0.0 && git push --tags`, dann als Release) entstehen:
+
+| Datei | Nutzung |
+|---|---|
+| `BullsnBier-Setup-x.y.z.exe` | Windows-Installer: Startmenü + Desktop (Live und Simulator), optional Autostart, Firewall-Freigabe, Stimme laden |
+| `BullsnBier-linux-x64.tar.gz` | entpacken, `./BullsnBier/install.sh` (Startmenü) oder `./BullsnBier/install.sh --service` (Autostart-Dienst) |
+
+```bash
+tar xzf BullsnBier-linux-x64.tar.gz && cd BullsnBier
+./BullsnBier --sim --open            # Simulator
+./BullsnBier --get-voice             # natürliche Stimmen laden
+```
+
+Daten liegen bei der fertigen App unter `%LOCALAPPDATA%\BullsnBier` bzw. `~/.local/share/bullsnbier` (dort auch `config.env`).
+Lokal bauen: `pip install pyinstaller && python packaging/build.py`.
+
 ## Docker (Simulator-Demo)
 
 Für eine Demo über das Internet läuft nur der Simulator, Kameras gibt es im Container keine.

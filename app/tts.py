@@ -2,9 +2,9 @@
 Läuft auf Linux + Windows ohne GPU. Stimmen liegen in data/voices, erzeugte Ansagen werden gecacht."""
 import hashlib, io, logging, os, re, shutil, threading, urllib.request, wave
 
-from .config import DATA, ROOT
+from .config import DATA, ROOT, USER_ROOT
 
-VOICES_DIR = os.environ.get("VOICES_DIR", os.path.join(ROOT, "voices"))  # gemeinsam für Live + Simulator
+VOICES_DIR = os.environ.get("VOICES_DIR", os.path.join(USER_ROOT, "voices"))  # gemeinsam für Live + Simulator
 CACHE_DIR = os.path.join(DATA, "tts-cache")
 URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/{fam}/{code}/{name}/{q}/{voice}{ext}?download=true"
 

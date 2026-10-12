@@ -8,3 +8,6 @@ dartcam.log
 voices/
 data-docker/
 .env
+build/
+dist/
+*.spec
