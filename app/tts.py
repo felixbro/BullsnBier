@@ -1,6 +1,6 @@
 """Natürliche Offline-Sprachausgabe mit Piper (https://github.com/OHF-Voice/piper1-gpl).
 Läuft auf Linux + Windows ohne GPU. Stimmen liegen in data/voices, erzeugte Ansagen werden gecacht."""
-import hashlib, io, os, re, shutil, threading, urllib.request, wave
+import hashlib, io, logging, os, re, shutil, threading, urllib.request, wave
 
 from .config import DATA, ROOT
 
@@ -24,6 +24,7 @@ CATALOG = {
 }
 
 _loaded, _lock = {}, threading.Lock()
+logging.getLogger("piper").setLevel(logging.ERROR)  # "Missing phoneme from id map" ist harmlos
 
 
 class TTSError(Exception):
