@@ -27,6 +27,7 @@ DEFAULTS = {
         "say_specials": True,       # Shanghai, Gotcha, halbiert
         "say_errors": True,         # Kamera-/Erkennungsfehler
         "sfx_bull": True,           # Sound bei Bullseye, Ansage danach 1,5 s später
+        "sfx_win": True,            # Jingle beim Spielsieg, Ansage danach
         "engine": "piper",          # piper (natürlich, Fallback Systemstimme) | browser
         "piper_voice": {"de": "de_DE-thorsten-high", "en": "en_GB-alan-medium"},
     },

@@ -54,7 +54,7 @@ function needUnlock() {
 }
 function stopSpeech() { clearTimeout(announce.t); if (speechOK) speechSynthesis.cancel(); audioQ.length = 0; if (audioEl) { audioEl.pause(); audioBusy = false; } }
 /* Soundeffekte (z. B. Bullseye) – unabhängig von der Stimme, aber mit derselben Lautstärke/Stummschaltung */
-var SFX = {bull: '/static/sounds/bullseye.mp3'}, sfxEl = {};
+var SFX = {bull: '/static/sounds/bullseye.mp3', win: '/static/sounds/winner.mp3'}, SFX_WAIT = {bull: 1500, win: 2500}, sfxEl = {};
 function sfx(name) {
   if (!CFG || LOCAL.muted) return false;
   var a = sfxEl[name] = sfxEl[name] || new Audio(SFX[name]);
@@ -100,9 +100,14 @@ function announce(calls) {
   if (!calls || !calls.length || !CFG) return;
   var list = calls.some(function (c) { return c.k === 'bulloff_win'; }) ? calls.filter(function (c) { return c.k !== 'start'; }) : calls;
   var txt = list.map(callText).filter(Boolean);
-  if (!txt.length) { if (CFG.caller.sfx_bull !== false && calls.some(function (c) { return c.k === 'dart' && c.d === 'BULL'; })) sfx('bull'); return; }
+  if (calls.some(function (c) { return c.k === 'start' || c.k === 'bulloff'; }) && sfxEl.win) sfxEl.win.pause();   // neues Spiel → Jingle aus
+  var fx = CFG.caller.sfx_win !== false && calls.some(function (c) { return c.k === 'match'; }) ? 'win'
+    : CFG.caller.sfx_bull !== false && calls.some(function (c) { return c.k === 'dart' && c.d === 'BULL'; }) ? 'bull' : null;
   if (calls[0].k === 'dart') stopSpeech();
-  var bull = CFG.caller.sfx_bull !== false && calls.some(function (c) { return c.k === 'dart' && c.d === 'BULL'; });
-  if (bull && sfx('bull')) { announce.t = setTimeout(function () { txt.forEach(function (t) { speak(t); }); }, 1500); return; }   // erst Sound, dann Ansage
+  if (fx && sfx(fx)) {   // erst Sound, dann Ansage
+    if (txt.length) announce.t = setTimeout(function () { txt.forEach(function (t) { speak(t); }); }, SFX_WAIT[fx]);
+    return;
+  }
+  if (!txt.length) return;
   txt.forEach(function (t) { speak(t); });
 }
