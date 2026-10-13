@@ -84,7 +84,7 @@ function subVoice() {
     '<div class="row"><button class="btn-glass" id="voiceTest" type="button">Probe abspielen</button></div></div>' +
     '<div class="glass card"><h2 class="h">Was wird angesagt?</h2><div class="checks">' +
     [['say_start', 'Spielstart + wer beginnt'], ['say_dart', 'Jeder einzelne Dart'], ['say_turn', 'Punkte der Aufnahme'], ['say_bust', 'Überworfen'],
-     ['say_next', 'Wer als Nächstes dran ist'], ['say_target', 'Ziel (ATC, Bermuda …)'], ['say_specials', 'Shanghai / Gotcha / Halbiert'], ['say_leg', 'Leg gewonnen'],
+     ['say_next', 'Wer als Nächstes dran ist'], ['say_target', 'Ziel (ATC, Bermuda …)'], ['say_specials', 'Shanghai / Gotcha / Halbiert'], ['sfx_bull', 'Sound bei Bullseye (Ansage 1,5 s später)'], ['say_leg', 'Leg gewonnen'],
      ['say_match', 'Spiel gewonnen'], ['say_correction', 'Korrekturen'], ['say_takeout', '„Pfeile ziehen“'], ['say_errors', 'Fehler (Kamera, nicht erkannt)']]
       .map(function (x) { return chk('caller.' + x[0], x[1]); }).join('') + '</div>' +
     '<div class="field"><span>Restpunkte ansagen</span><div class="seg" id="remain"><button data-v="off">Nie</button><button data-v="finish">Nur im Finish-Bereich</button><button data-v="always">Immer</button></div></div></div>';
