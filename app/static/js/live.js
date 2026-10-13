@@ -69,7 +69,7 @@ function renderLive(m, fxDelay) {
   var route = !dt.closed && s.checkout ? s.checkout : null;
   if (route) box = '<div class="checkout" id="coBox"><div class="lbl"><span class="dot"></span>Checkout · ' + route.length + (route.length === 1 ? ' Dart' : ' Darts') + '</div>' +
     '<div class="way">' + route.map(dartLabel).join(' · ') + '</div><div class="alt">Rest ' + main + '</div></div>';
-  else if (v.marks) box = crTable(g);
+  else if (v.marks) box = crTable(g, p);
   else if (s.targets && s.targets[p]) box = '<div class="infobox"><div class="lbl"><span class="dot" style="background:var(--aqua-strong)"></span>Ziel</div><div class="way">' + esc(s.targets[p]) + '</div>' + (v.sub ? '<div class="alt">' + esc(v.sub) + '</div>' : '') + '</div>';
   else if (g.mode === 'gotcha') box = '<div class="infobox"><div class="lbl">Bis ' + g.opts.target + '</div><div class="way">noch ' + (g.opts.target - main) + '</div></div>';
   else if (v.sub) box = '<div class="infobox"><div class="lbl">Stand</div><div class="way" style="font-size:32px">' + esc(v.sub) + '</div></div>';
@@ -78,6 +78,7 @@ function renderLive(m, fxDelay) {
     ' · Legs ' + s.legs_won[p] + (sets ? ' · Sets ' + s.sets_won[p] : '') + '</div></div></div>';
   var info = (sets ? 'Set ' + (s.set + 1) + ' · ' : '') + 'Leg ' + (s.leg + 1) + ' · ' + modeLine(g) + (s.round_limit ? ' · Runde ' + Math.min(s.round, s.round_limit) + '/' + s.round_limit : '');
   var tag = s.winner !== null ? '<span class="tag active">Sieger</span>' : dt.closed ? '<span class="tag wait">Aufnahme vorbei</span>' : '<span class="tag active">Am Wurf</span>';
+  card.classList.toggle('cricket', !!v.marks);
   card.innerHTML = '<span class="flash"></span><div class="lc-left">' +
     '<div class="row">' + tag + '<span class="meta" style="font-size:var(--fs-ui)">' + esc(info) + '</span></div>' + who +
     '<div class="score bust-score' + (isNum ? (String(main).length >= 3 ? ' m' : '') : ' txt') + '" id="bigScore">' + esc(main) + '</div><span class="stamp bust-stamp">Überworfen</span></div>' +
@@ -88,6 +89,7 @@ function renderLive(m, fxDelay) {
     '<div class="lc-stats">' + (isPoints(g.mode) ? '<div><div class="k">Ø 3 Darts</div><div class="v">' + st.avg.toFixed(1) + '</div></div>' : '<div><div class="k">Runde</div><div class="v">' + s.round + '</div></div>') +
     '<div><div class="k">Darts</div><div class="v">' + st.darts + '</div></div><div><div class="k">High</div><div class="v">' + st.high + '</div></div></div></div>';
   $$('#chips .dart[data-i]').forEach(function (c) { c.onclick = function () { pickSel(dt.ti, +c.dataset.i); }; });
+  crAnimate();
 
   // Score zählt (B14) – bei Vollbild-Effekt ab 85 % seiner Dauer
   var big = $('#bigScore');
@@ -122,21 +124,34 @@ function fitScore(el) {
   if (w > avail && avail > 0) { var s = 'scale(' + (avail / w).toFixed(3) + ')'; el.style.transform = s; el.style.webkitTransform = s; }
 }
 
-function crTable(g) {
+/* Cricket-Tabelle: Spalte je Spieler. Der Werfer bekommt eine breite, hervorgehobene Spalte mit Namen,
+   die anderen Avatar + 3 Buchstaben. Beim Wechsel gleitet die Breite (flex-grow) zum Nächsten. */
+var crLast = null;
+function crTable(g, cur) {
   var s = g.state, nums = Object.keys(s.views[0].marks).sort(function (a, b) { return (a == 25) - (b == 25) || b - a; });
-  var cols = 'grid-template-columns:44px repeat(' + g.players.length + ',minmax(0,1fr))';
-  var sym = ['', '/', '✕', 'Ⓧ'];
-  var h = '<div class="infobox crtable"><div class="crow" style="' + cols + '"><span></span>' + g.players.map(function (p) { return '<span class="hd">' + avatar(p, 24) + '</span>'; }).join('') + '</div>';
-  nums.forEach(function (n) {
-    h += '<div class="crow" style="' + cols + '"><span class="num">' + (n == 25 ? 'B' : n) + '</span>' + g.players.map(function (_, i) {
-      var k = s.views[i].marks[n]; return '<span class="m' + (k >= 3 ? ' c3' : '') + '">' + sym[k] + '</span>'; }).join('') + '</div>';
+  var sym = ['', '/', '✕', 'Ⓧ'], from = crLast != null && crLast !== cur && crLast < g.players.length ? crLast : cur;
+  var h = '<div class="infobox crtable' + (nums.length > 8 ? ' many' : '') + '" id="crt" data-to="' + cur + '">' +
+    '<div class="crcol crnum"><span class="hd"></span>' + nums.map(function (n) { return '<span class="num">' + (n == 25 ? 'B' : n) + '</span>'; }).join('') + '</div>';
+  g.players.forEach(function (p, i) {
+    h += '<div class="crcol' + (i === from ? ' cur' : '') + '" data-i="' + i + '" style="--pc:' + (p.color || PALETTE[i % 8]) + '"><span class="hd">' + avatar(p, 28) +
+      '<span class="nm"><b>' + esc(p.name) + '</b><i>' + esc(p.name.slice(0, 3)) + '</i></span></span>' +
+      nums.map(function (n) { var k = s.views[i].marks[n]; return '<span class="m' + (k >= 3 ? ' c3' : '') + '">' + sym[k] + '</span>'; }).join('') + '</div>';
   });
+  crLast = cur;
   return h + '</div>';
+}
+function crAnimate() {
+  var t = $('#crt'); if (!t) return;
+  var to = t.dataset.to, cols = $$('.crcol[data-i]', t);
+  if (cols.some(function (c) { return c.classList.contains('cur') && c.dataset.i === to; })) return;
+  requestAnimationFrame(function () { requestAnimationFrame(function () {
+    cols.forEach(function (c) { c.classList.toggle('cur', c.dataset.i === to); }); }); });
 }
 
 function renderPlist(g, m) {
   var s = g.state, n = g.players.length, next = (s.current + 1) % n;
-  $('#plist').innerHTML = g.players.map(function (p, i) {
+  var pl = $('#plist'); pl.style.setProperty('--cols', Math.max(6, n)); pl.classList.toggle('compact', n > 6);
+  pl.innerHTML = g.players.map(function (p, i) {
     var v = s.views[i] || {}, cur = i === s.current && s.winner === null, isNext = !cur && i === next && n > 1 && s.winner === null;
     var rem = typeof v.main === 'number' && isPoints(g.mode) && g.mode !== 'countup' ? v.main : null;
     var fin = !cur && rem != null && rem <= 170 && [169, 168, 166, 165, 163, 162, 159].indexOf(rem) < 0 && rem > 1;

@@ -100,12 +100,29 @@ button.hstatus{cursor:pointer;}
 .infobox .lbl{display:flex; align-items:center; gap:8px; font-size:var(--fs-label); color:var(--ink-2);}
 .infobox .way{font-size:52px; font-weight:300; letter-spacing:-.02em; line-height:1.1;}
 .infobox .alt{font-size:var(--fs-meta); color:var(--ink-2);}
-.crtable{display:grid; gap:4px; font-size:var(--fs-ui);}
-.crtable .crow{display:grid; align-items:center; gap:4px; height:30px;}
-.crtable .num{font-weight:500;}
-.crtable .m{height:30px; border-radius:var(--r-nav); background:rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center; font-size:var(--fs-body);}
+.crtable{display:flex; gap:6px; padding:14px; font-size:var(--fs-ui); --rh:42px;}
+.crtable.many{--rh:30px;}
+.crcol{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:5px; border-radius:var(--r-field); padding:4px;
+  -webkit-transition:flex-grow 480ms var(--ease-out), background-color 300ms ease-out; transition:flex-grow 480ms var(--ease-out), background-color 300ms ease-out;}
+.crcol.crnum{flex:0 0 40px; padding:4px 0;}
+.crcol.cur{flex-grow:2.6; background:var(--pc); box-shadow:0 10px 24px rgba(32,32,32,.10);}
+.crtable .hd{height:52px; display:flex; align-items:center; justify-content:center; gap:8px; min-width:0; overflow:hidden;}
+.crtable .nm{min-width:0; font-size:var(--fs-label); line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.crtable .nm b{display:none; font-weight:600; font-size:18px;}
+.crtable .nm i{font-style:normal; color:var(--ink-2); font-weight:500;}
+.crcol.cur .nm b{display:inline; -webkit-animation:cr-name 320ms var(--ease-out) 200ms both; animation:cr-name 320ms var(--ease-out) 200ms both;}
+.crcol.cur .nm i{display:none;}
+@-webkit-keyframes cr-name{from{opacity:0; -webkit-transform:translateX(-6px);} to{opacity:1; -webkit-transform:none;}}
+@keyframes cr-name{from{opacity:0; transform:translateX(-6px);} to{opacity:1; transform:none;}}
+.crcol:not(.cur) .hd{flex-direction:column; gap:3px; height:52px;}
+.crcol:not(.cur) .hd .avatar{--av:24px !important;}
+.livecard.cricket{grid-template-columns:minmax(0,1fr) 700px;}
+.crtable .num{height:var(--rh); display:flex; align-items:center; font-weight:600; font-size:20px;}
+.crtable .m{height:var(--rh); border-radius:var(--r-nav); background:rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center; font-size:22px;}
 .crtable .m.c3{background:var(--mint-soft);}
-.crtable .hd{display:flex; justify-content:center;}
+.crcol.cur .m{background:rgba(255,255,255,.72); font-size:26px; font-weight:500;}
+.crcol.cur .m.c3{background:var(--mint); color:#202020;}
+.crcol.cur .hd .nm b{color:#202020;}
 .sticker{position:absolute; padding:6px 12px; border-radius:8px; background:var(--fog); color:var(--ink); font-size:18px; opacity:0;}
 .stamp{position:absolute; padding:8px 14px; border-radius:8px; background:var(--coral); color:var(--ink); font-size:20px; font-weight:500; opacity:0; white-space:nowrap; z-index:4;}
 .anim-score, .anim-ups{position:relative; display:inline-block;}
@@ -143,7 +160,15 @@ button.hstatus{cursor:pointer;}
 .manual .prev button{height:36px; padding:0 12px; border-radius:var(--r-nav); border:1px solid var(--glass-line); background:rgba(255,255,255,.6);}
 .manual .prev button.sel{background:var(--ink); color:#fff;}
 .manual .prev .done{margin-left:auto; background:var(--lime); border-color:transparent; font-weight:600;}
-.plist{position:absolute; left:0; right:0; top:800px; height:136px; display:grid; grid-auto-flow:column; grid-auto-columns:calc((100% - 60px) / 6); gap:var(--gap-s); overflow-x:auto;}
+.plist{position:absolute; left:0; right:196px; top:800px; height:136px; display:grid; grid-auto-flow:column; --cols:6;
+  grid-auto-columns:calc((100% - (var(--cols) - 1) * var(--gap-s)) / var(--cols)); gap:var(--gap-s); overflow:visible;}
+.plist.compact{gap:8px; grid-auto-columns:calc((100% - (var(--cols) - 1) * 8px) / var(--cols));}
+.plist.compact .pcard{padding:12px 12px;}
+.plist.compact .pcard .top{gap:8px;} .plist.compact .pcard .top .avatar{--av:32px !important;}
+.plist.compact .pcard .who{font-size:15px; overflow:hidden; text-overflow:ellipsis;}
+.plist.compact .pcard .legs{display:none;}
+.plist.compact .pcard .rest{font-size:42px;}
+.plist.compact .pcard .bot span:first-child{font-size:11px;}
 .plist .pcard{position:relative; height:136px; min-width:0;}
 .pcard .top{display:flex; align-items:center; gap:10px; min-width:0;}
 .pcard .bot{display:flex; justify-content:space-between; align-items:flex-end;}
