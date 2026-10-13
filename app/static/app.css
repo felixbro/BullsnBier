@@ -449,7 +449,8 @@ button.hstatus{cursor:pointer;}
 [data-theme="night"] .fx--winner .avatar.ring{box-shadow:0 0 0 3px #fff, 0 0 0 6px var(--pc,var(--p1));}
 
 /* ---- Cricket: Feld geschlossen (3 Varianten, Einstellungen → Anzeige) ---- */
-.crfx{position:absolute; left:10px; right:10px; height:calc(var(--rh) + 8px); top:calc(14px + 4px + 52px + 5px + var(--r) * (var(--rh) + 5px) - 4px);
+.crcol{position:relative;}
+.crfx{position:absolute; left:0; right:0; height:calc(var(--rh) + 8px); top:calc(4px + 52px + 5px + var(--r) * (var(--rh) + 5px) - 4px);
   pointer-events:none; border-radius:var(--r-field); overflow:hidden; z-index:2;}
 /* A · Lichtband: Lime-Streifen fegt durch die Zeile, Zelle springt auf */
 .crfx-sweep{background:linear-gradient(90deg, transparent 0%, rgba(221,249,106,0) 30%, rgba(221,249,106,.95) 50%, rgba(255,255,255,.9) 54%, rgba(221,249,106,0) 70%, transparent 100%);
@@ -458,8 +459,8 @@ button.hstatus{cursor:pointer;}
 @keyframes cr-sweep{0%{background-position:100% 0; opacity:1;} 85%{opacity:1;} 100%{background-position:0 0; opacity:0;}}
 @-webkit-keyframes cr-sweep{0%{background-position:100% 0; opacity:1;} 85%{opacity:1;} 100%{background-position:0 0; opacity:0;}}
 .fx-sweep .m.just{-webkit-animation:cr-pop 520ms var(--ease-back) 250ms both; animation:cr-pop 520ms var(--ease-back) 250ms both;}
-@keyframes cr-pop{0%{transform:scale(1);} 45%{transform:scale(1.22);} 100%{transform:scale(1);}}
-@-webkit-keyframes cr-pop{0%{-webkit-transform:scale(1);} 45%{-webkit-transform:scale(1.22);} 100%{-webkit-transform:scale(1);}}
+@keyframes cr-pop{0%{transform:scale(1);} 45%{transform:scale(1.04,1.22);} 100%{transform:scale(1);}}
+@-webkit-keyframes cr-pop{0%{-webkit-transform:scale(1);} 45%{-webkit-transform:scale(1.04,1.22);} 100%{-webkit-transform:scale(1);}}
 /* B · Stempel: Ⓧ knallt rein, Mint-Ring breitet sich aus */
 .crfx-stamp{display:none;}
 .fx-stamp .m.just{position:relative; overflow:visible; -webkit-animation:cr-stamp 480ms var(--ease-back) both; animation:cr-stamp 480ms var(--ease-back) both;}

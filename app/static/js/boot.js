@@ -38,12 +38,13 @@ function onMessage(m) {
     if (!m.game && !m.bulloff) stopA();
     if (m.game && m.game.state.winner === null && fxCur && fxCur.key === 'match_won') stopA();
     // Nachlauf: Werfer bleibt kurz groß, damit Bust/100+/Ups sichtbar sind
-    var closed = calls.some(function (c) { return ['turn', 'bust', 'halved', 'leg', 'match'].indexOf(c.k) >= 0; });
+    var closed = calls.some(function (c) { return ['turn', 'bust', 'halved', 'leg', 'match', 'next'].indexOf(c.k) >= 0; });
     ST = m;
     var delay = runEffects(m);
     if (closed && m.game && m.game.state.last_turn) {
-      hold = {ti: m.game.state.last_turn.ti, until: Date.now() + Math.max(1700, delay)};
-      clearTimeout(onMessage.ht); onMessage.ht = setTimeout(function () { render(ST); }, Math.max(1700, delay) + 30);
+      var hd = Math.max(1700, delay) + (closedWithLast(m.game) ? 1000 : 0);   // Cricket: Feld mit letztem Dart zu → 1 s länger stehen lassen
+      hold = {ti: m.game.state.last_turn.ti, until: Date.now() + hd};
+      clearTimeout(onMessage.ht); onMessage.ht = setTimeout(function () { render(ST); }, hd + 30);
     }
     render.delay = delay;
     render(m);
@@ -58,6 +59,14 @@ function onMessage(m) {
   if (m.type === 'fx_test') { var k = m.fx.trigger; if (FXA[k] && PAGE === 'live') playA(k, demoData(k), true); }
   if (m.type === 'warn') toast(m.msg, '', 'warn', 'w:' + m.msg);
   if (m.type === 'dart_free') toast('Treffer ' + dartLabel(m.score.name), 'kein Spiel aktiv', 'info', 'free');
+}
+/* Hat der letzte Dart der Aufnahme ein Cricket-Feld geschlossen? */
+function closedWithLast(g) {
+  var lt = g.state.last_turn, v = lt && g.state.views[lt.p];
+  if (!v || !v.marks || !lt.darts.length) return false;
+  var d = lt.darts[lt.darts.length - 1], n = d.seg === 25 ? 25 : d.seg, hits = d.seg === 25 ? (d.name === 'BULL' ? 2 : 1) : d.mult || 0;
+  var k = v.marks[n];
+  return k != null && hits > 0 && k >= 3 && k - hits < 3;
 }
 function connect() {
   var ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');

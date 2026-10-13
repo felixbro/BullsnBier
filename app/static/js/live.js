@@ -143,13 +143,13 @@ function crTable(g, cur) {
   var h = '<div class="infobox crtable' + (nums.length > 8 ? ' many' : '') + '" id="crt" data-to="' + cur + '">' +
     '<div class="crcol crnum"><span class="hd"></span>' + nums.map(function (n) { return '<span class="num">' + (n == 25 ? 'B' : n) + '</span>'; }).join('') + '</div>';
   g.players.forEach(function (p, i) {
+    var fx = style === 'off' ? '' : closed.filter(function (c) { return c.i === i; }).map(function (c) {   // Effekt nur in der Spalte des Spielers
+      return '<div class="crfx crfx-' + style + '" style="--r:' + c.r + '"><i></i><i></i><i></i><i></i><i></i><i></i></div>'; }).join('');
     h += '<div class="crcol' + (i === from ? ' cur' : '') + '" data-i="' + i + '" style="--pc:' + (p.color || PALETTE[i % 8]) + '"><span class="hd">' + avatar(p, 28) +
       '<span class="nm"><b>' + esc(p.name) + '</b><i>' + esc(p.name.slice(0, 3)) + '</i></span></span>' +
-      nums.map(function (n) { var k = s.views[i].marks[n]; return '<span class="m' + (k >= 3 ? ' c3' : '') + (just[i + ':' + n] ? ' just' : '') + '">' + sym[k] + '</span>'; }).join('') + '</div>';
+      nums.map(function (n) { var k = s.views[i].marks[n]; return '<span class="m' + (k >= 3 ? ' c3' : '') + (just[i + ':' + n] ? ' just' : '') + '">' + sym[k] + '</span>'; }).join('') + fx + '</div>';
   });
   crLast = cur;
-  if (style !== 'off') closed.forEach(function (c) {   // Effekt-Ebene über der Zeile
-    h += '<div class="crfx crfx-' + style + '" style="--r:' + c.r + '; --pc:' + (g.players[c.i].color || PALETTE[c.i % 8]) + '"><i></i><i></i><i></i><i></i><i></i><i></i></div>'; });
   return h.replace('class="infobox crtable', 'class="infobox crtable fx-' + style) + '</div>';
 }
 function crAnimate() {
