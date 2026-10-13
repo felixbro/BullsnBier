@@ -52,9 +52,9 @@ function needUnlock() {
     if (audioQ.length > 3) audioQ.splice(0, audioQ.length - 3); playNext(); };
   document.addEventListener('pointerdown', go, true);
 }
-function stopSpeech() { clearTimeout(announce.t); if (speechOK) speechSynthesis.cancel(); audioQ.length = 0; if (audioEl) { audioEl.pause(); audioBusy = false; } }
+function stopSpeech() { clearTimeout(announce.t); clearInterval(announce.w); if (speechOK) speechSynthesis.cancel(); audioQ.length = 0; if (audioEl) { audioEl.pause(); audioBusy = false; } }
 /* Soundeffekte (z. B. Bullseye) – unabhängig von der Stimme, aber mit derselben Lautstärke/Stummschaltung */
-var SFX = {bull: '/static/sounds/bullseye.mp3', win: '/static/sounds/winner.mp3'}, SFX_WAIT = {bull: 1500, win: 2500}, sfxEl = {};
+var SFX = {bull: '/static/sounds/bullseye.mp3', win: '/static/sounds/winner.mp3'}, SFX_WAIT = {bull: 1500}, sfxEl = {};
 function sfx(name) {
   if (!CFG || LOCAL.muted) return false;
   var a = sfxEl[name] = sfxEl[name] || new Audio(SFX[name]);
@@ -100,10 +100,20 @@ function announce(calls) {
   if (!calls || !calls.length || !CFG) return;
   var list = calls.some(function (c) { return c.k === 'bulloff_win'; }) ? calls.filter(function (c) { return c.k !== 'start'; }) : calls;
   var txt = list.map(callText).filter(Boolean);
-  if (calls.some(function (c) { return c.k === 'start' || c.k === 'bulloff'; }) && sfxEl.win) sfxEl.win.pause();   // neues Spiel → Jingle aus
-  var fx = CFG.caller.sfx_win !== false && calls.some(function (c) { return c.k === 'match'; }) ? 'win'
-    : CFG.caller.sfx_bull !== false && calls.some(function (c) { return c.k === 'dart' && c.d === 'BULL'; }) ? 'bull' : null;
+  if (calls.some(function (c) { return c.k === 'start' || c.k === 'bulloff'; })) { clearInterval(announce.w); if (sfxEl.win) sfxEl.win.pause(); }   // neues Spiel → Jingle aus
+  var win = CFG.caller.sfx_win !== false && calls.some(function (c) { return c.k === 'match'; });
+  var fx = !win && CFG.caller.sfx_bull !== false && calls.some(function (c) { return c.k === 'dart' && c.d === 'BULL'; }) ? 'bull' : null;
   if (calls[0].k === 'dart') stopSpeech();
+  if (win) {   // Sieg: erst Ansage, dann – wenn alles gesagt ist und der Sieger-Screen steht – der Jingle
+    txt.forEach(function (t) { speak(t); });
+    var t0 = Date.now();
+    clearInterval(announce.w);
+    announce.w = setInterval(function () {
+      var talking = audioBusy || audioQ.length || (speechOK && speechSynthesis.speaking);
+      if ((!talking && Date.now() - t0 > 2200) || Date.now() - t0 > 15000) { clearInterval(announce.w); sfx('win'); }
+    }, 200);
+    return;
+  }
   if (fx && sfx(fx)) {   // erst Sound, dann Ansage
     if (txt.length) announce.t = setTimeout(function () { txt.forEach(function (t) { speak(t); }); }, SFX_WAIT[fx]);
     return;
