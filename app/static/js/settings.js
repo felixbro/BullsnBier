@@ -120,8 +120,8 @@ function renderEngine() {
     $$('[data-use]', box).forEach(function (b) { b.onclick = function () { var p = {caller: {piper_voice: {}}}; p.caller.piper_voice[lang] = b.dataset.use; saveSettings(p); setTimeout(renderEngine, 400); }; });
     $$('[data-try]', box).forEach(function (b) { b.onclick = function () { var old = CFG.caller.piper_voice[lang]; CFG.caller.piper_voice[lang] = b.dataset.try;
       speak(fill(CFG.texts[lang].next_remaining, SAMPLE), true); CFG.caller.piper_voice[lang] = old; }; });
-    $$('[data-dl]', box).forEach(function (b) { b.onclick = function () { b.disabled = true; b.textContent = 'Lädt …';
-      api('/api/tts/download', 'POST', {voice: b.dataset.dl}).then(function () { toast('Stimme installiert', b.dataset.dl, 'ok'); renderEngine(); },
+    $$('[data-dl]', box).forEach(function (b) { b.onclick = function () { b.disabled = true;
+      btnLoading(b, api('/api/tts/download', 'POST', {voice: b.dataset.dl})).then(function () { toast('Stimme installiert', b.dataset.dl, 'ok'); renderEngine(); },
         function (e) { toast('Download fehlgeschlagen', e && e.detail, 'warn'); renderEngine(); }); }; });
   });
 }
@@ -176,7 +176,8 @@ function subWled() {
   bindChecks($('#scontent'));
   $('#wledHosts').onchange = function (e) { saveSettings({wled: {hosts: e.target.value.trim()}}); };
   $('#wledCheck').onclick = function () { saveSettings({wled: {hosts: $('#wledHosts').value.trim()}}); $('#wledInfo').textContent = 'Prüfe …';
-    setTimeout(function () { api('/api/wled/info').then(function (r) { if (!r.ok) { wledInfo = null; $('#wledInfo').textContent = 'Nicht erreichbar: ' + r.error; return; } wledInfo = r; subWled(); }); }, 450); };
+    var wb = $('#wledCheck'); wb.classList.add('is-loading'); setTimeout(function () { wb.classList.remove('is-loading'); }, 8000);   // D6
+    setTimeout(function () { api('/api/wled/info').then(function (r) { wb.classList.remove('is-loading'); if (!r.ok) { wledInfo = null; $('#wledInfo').textContent = 'Nicht erreichbar: ' + r.error; return; } wledInfo = r; subWled(); }); }, 450); };
   $$('.fxrow[data-k]').forEach(function (row) {
     var k = row.dataset.k, set = function (f, v) { var p = {wled: {effects: {}}}; p.wled.effects[k] = {}; p.wled.effects[k][f] = v; saveSettings(p); };
     $$('[data-f]', row).forEach(function (el) { el.onchange = function () {

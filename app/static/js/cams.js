@@ -16,12 +16,17 @@ function loadCams() {
       return '<div class="glass cam" data-id="' + c.id + '"><div class="card-head"><h2 class="h">Cam ' + (+c.id + 1) + '</h2><span class="meta">' + esc(c.src) + '</span></div>' +
         '<div class="tagrow"><span class="tag ' + (c.ok ? 'ok' : 'bad') + '">' + (c.ok ? 'verbunden' : 'offline') + '</span><span class="tag ' + (c.cal ? 'ok' : 'bad') + '">' + (c.cal ? 'kalibriert' : 'nicht kalibriert') + '</span></div>' +
         '<div class="img"><img src="/api/cam/' + c.id + '.jpg?overlay=1&t=' + Date.now() + '" alt="Kamerabild ' + (+c.id + 1) + '"></div>' +
-        '<div class="field"><span>Kalibrierpunkt · Außenkante Double</span><div class="seg pts">' + CALK.map(function (k) { return '<button data-v="' + k + '">' + k + '</button>'; }).join('') + '</div></div>' +
+        '<div class="field"><span>Kalibrierpunkt · Außenkante Double · <b class="stepn">0 / 4</b></span><div class="seg pts stepper">' + CALK.map(function (k) { return '<button data-v="' + k + '">' + k + '</button>'; }).join('') + '</div><div class="step-bar"><i></i></div></div>' +
         '<div class="acts"><button class="btn-glass live" type="button">Live-Bild</button><button class="btn-cta save" type="button">Speichern</button></div></div>';
     }).join('');
     $$('#camgrid .cam').forEach(function (el) {
       var id = el.dataset.id, pts = JSON.parse(JSON.stringify(cal[id] || {})), cur = '20', live = false, img = $('img', el), box = $('.img', el), sg = $('.pts', el);
-      var marks = function () { $$('.mk', box).forEach(function (m) { m.remove(); }); if (!img.naturalWidth) return;
+      var steps = function () {   // D7 Stepper: erledigte Punkte + Fortschritt
+        var n = CALK.filter(function (k) { return pts[k]; }).length;
+        $$('.pts button', el).forEach(function (b) { b.classList.toggle('done', !!pts[b.dataset.v]); });
+        $('.stepn', el).textContent = n + ' / 4'; $('.step-bar i', el).style.setProperty('--p', n / 4);
+      };
+      var marks = function () { steps(); $$('.mk', box).forEach(function (m) { m.remove(); }); if (!img.naturalWidth) return;
         Object.keys(pts).forEach(function (k) { var m = document.createElement('div'); m.className = 'mk';
           m.style.left = (pts[k][0] / img.naturalWidth * 100) + '%'; m.style.top = (pts[k][1] / img.naturalHeight * 100) + '%'; m.textContent = k; box.appendChild(m); }); };
       img.onload = marks;

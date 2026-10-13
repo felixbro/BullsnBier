@@ -1,0 +1,73 @@
+/* ====================================================================
+   Bulls’n’Bier · Styleguide-Erweiterung D · Micro-Interaktionen
+   (nach interior.dev-Mustern, nachgebaut in Vanilla CSS)
+   Regeln wie §8: nur transform/opacity animieren, CI-Farben, -webkit-Präfixe.
+   Alles hängt an eigenen Klassen (.hold, .ripple, .vflash, .reveal, .is-loading,
+   .stepper) – fehlt die Datei, funktioniert die App unverändert.
+   ==================================================================== */
+
+/* D1 · Hold to Confirm – gedrückt halten, Füllung läuft von links */
+.hold{overflow:hidden; isolation:isolate; -webkit-user-select:none; user-select:none; touch-action:none;}
+.hold::before{content:''; position:absolute; inset:0; z-index:-1; border-radius:inherit; background:var(--coral);
+  -webkit-transform:scaleX(0); transform:scaleX(0); -webkit-transform-origin:0 50%; transform-origin:0 50%;}
+.hold.holding::before{-webkit-transition:-webkit-transform var(--hold, 900ms) linear; transition:transform var(--hold, 900ms) linear; -webkit-transform:scaleX(1); transform:scaleX(1);}
+.hold.holding{color:#202020;}
+.hold.done{-webkit-animation:d-done 360ms var(--ease-back); animation:d-done 360ms var(--ease-back);}
+@-webkit-keyframes d-done{40%{-webkit-transform:scale(.94);} 100%{-webkit-transform:none;}}
+@keyframes d-done{40%{transform:scale(.94);} 100%{transform:none;}}
+.hold-hint{position:absolute; right:0; bottom:calc(100% + 8px); padding:6px 10px; border-radius:var(--r-nav); background:var(--ink); color:#fff;
+  font-size:var(--fs-micro); white-space:nowrap; pointer-events:none; opacity:0; -webkit-transform:translateY(4px); transform:translateY(4px);
+  -webkit-transition:opacity 160ms, -webkit-transform 160ms; transition:opacity 160ms, transform 160ms;}
+.hold-hint.on{opacity:1; -webkit-transform:none; transform:none;}
+[data-theme="night"] .hold-hint{background:var(--lime); color:#202020;}
+
+/* D2 · Ripple – Welle am Treffpunkt auf dem Board (SVG) */
+#board .ripple{fill:none; stroke:var(--b-hit, #DDF96A); stroke-width:4; pointer-events:none;
+  -webkit-transform-box:fill-box; transform-box:fill-box; -webkit-transform-origin:center; transform-origin:center;
+  -webkit-animation:d-ripple 620ms var(--ease-out) forwards; animation:d-ripple 620ms var(--ease-out) forwards;}
+#board .ripple.r2{stroke:#fff; stroke-width:2; -webkit-animation-delay:80ms; animation-delay:80ms;}
+@-webkit-keyframes d-ripple{0%{-webkit-transform:scale(.3); opacity:1;} 100%{-webkit-transform:scale(3.2); opacity:0;}}
+@keyframes d-ripple{0%{transform:scale(.3); opacity:1;} 100%{transform:scale(3.2); opacity:0;}}
+
+/* D3 · Value Flash – geänderter Wert blitzt kurz auf (Spielerleiste) */
+.vflash{-webkit-animation:d-vflash 700ms var(--ease-out); animation:d-vflash 700ms var(--ease-out);}
+@-webkit-keyframes d-vflash{0%{-webkit-transform:scale(1);} 25%{-webkit-transform:scale(1.12); opacity:.55;} 100%{-webkit-transform:none; opacity:1;}}
+@keyframes d-vflash{0%{transform:scale(1);} 25%{transform:scale(1.12); opacity:.55;} 100%{transform:none; opacity:1;}}
+.pcard.vflash-card::after{content:''; position:absolute; left:0; right:0; bottom:0; height:4px; border-radius:0 0 var(--r-tile) var(--r-tile); background:var(--pc, var(--lime));
+  -webkit-transform-origin:0 50%; transform-origin:0 50%; -webkit-animation:d-bar 900ms var(--ease-out) forwards; animation:d-bar 900ms var(--ease-out) forwards;}
+@-webkit-keyframes d-bar{0%{-webkit-transform:scaleX(0); opacity:1;} 60%{-webkit-transform:scaleX(1); opacity:1;} 100%{-webkit-transform:scaleX(1); opacity:0;}}
+@keyframes d-bar{0%{transform:scaleX(0); opacity:1;} 60%{transform:scaleX(1); opacity:1;} 100%{transform:scaleX(1); opacity:0;}}
+
+/* D4 · Poll Results – Listen bauen sich gestaffelt auf */
+.stagger > *{-webkit-animation:d-rise 420ms var(--ease-out) both; animation:d-rise 420ms var(--ease-out) both;
+  -webkit-animation-delay:calc(var(--i, 0) * 70ms); animation-delay:calc(var(--i, 0) * 70ms);}
+@-webkit-keyframes d-rise{from{opacity:0; -webkit-transform:translateY(10px);} to{opacity:1; -webkit-transform:none;}}
+@keyframes d-rise{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+
+/* D5 · Text Reveal – Buchstaben steigen nacheinander auf */
+.reveal span{display:inline-block; white-space:pre; -webkit-animation:d-letter 420ms var(--ease-back) both; animation:d-letter 420ms var(--ease-back) both;
+  -webkit-animation-delay:calc(var(--d0, 0ms) + var(--i) * 45ms); animation-delay:calc(var(--d0, 0ms) + var(--i) * 45ms);}
+@-webkit-keyframes d-letter{from{opacity:0; -webkit-transform:translateY(.45em) scale(.9);} to{opacity:1; -webkit-transform:none;}}
+@keyframes d-letter{from{opacity:0; transform:translateY(.45em) scale(.9);} to{opacity:1; transform:none;}}
+
+/* D6 · Loading Button – Punkte statt Text, Klicks gesperrt */
+.is-loading{position:relative; pointer-events:none; color:transparent !important;}
+.is-loading::after{content:''; position:absolute; left:50%; top:50%; width:8px; height:8px; margin:-4px 0 0 -16px; border-radius:50%;
+  background:currentColor; color:var(--ink); box-shadow:12px 0 0 var(--ink), 24px 0 0 var(--ink);
+  -webkit-animation:d-dots 900ms ease-in-out infinite; animation:d-dots 900ms ease-in-out infinite;}
+@-webkit-keyframes d-dots{0%,100%{opacity:.25;} 50%{opacity:1;}}
+@keyframes d-dots{0%,100%{opacity:.25;} 50%{opacity:1;}}
+
+/* D7 · Stepper / Wizard – Kalibrierpunkte mit Fortschritt */
+.stepper button{position:relative;}
+.stepper button.done::after{content:'✓'; position:absolute; right:6px; top:4px; font-size:11px; font-weight:700; color:var(--mint);}
+.step-bar{height:4px; border-radius:2px; background:rgba(32,32,32,.08); overflow:hidden;}
+.step-bar i{display:block; height:100%; background:var(--mint); -webkit-transform-origin:0 50%; transform-origin:0 50%;
+  -webkit-transform:scaleX(var(--p, 0)); transform:scaleX(var(--p, 0)); -webkit-transition:-webkit-transform 360ms var(--ease-out); transition:transform 360ms var(--ease-out);}
+[data-theme="night"] .step-bar{background:rgba(255,255,255,.12);}
+
+@media (prefers-reduced-motion: reduce){
+  :root:not(.force-motion) .ripple, :root:not(.force-motion) .reveal span, :root:not(.force-motion) .stagger > *, :root:not(.force-motion) .vflash{-webkit-animation:none !important; animation:none !important;}
+}
+/* Exit-Knopf: Hover nur angedeutet, damit die Halte-Füllung sichtbar bleibt */
+.btn-exit.hold:hover{background:rgba(255,107,94,.16); border-color:rgba(255,107,94,.6); color:var(--ink);}

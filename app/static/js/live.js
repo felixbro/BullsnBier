@@ -176,7 +176,8 @@ function renderPlist(g, m) {
   }).join('');
   $$('#plist .rest').forEach(function (el) {
     var i = +el.dataset.p, v = s.views[i] && s.views[i].main;
-    if (typeof v === 'number') { countTo(el, v, {from: shown['l' + i] != null ? shown['l' + i] : v}); shown['l' + i] = v; }
+    if (typeof v === 'number') { var was = shown['l' + i]; countTo(el, v, {from: was != null ? was : v}); shown['l' + i] = v;
+      if (was != null && was !== v && typeof valueFlash === 'function') valueFlash(el, el.closest('.pcard')); }   // D3
   });
   var act = $('#plist .pcard.active'); if (act && act.scrollIntoView) act.scrollIntoView({block: 'nearest', inline: 'nearest'});
 }
@@ -266,12 +267,10 @@ function updEnd(m) {
   b.classList.toggle('hidden', !g || PAGE !== 'live');
   if (g) $('span', b).textContent = m.game && m.game.state.winner !== null ? 'Spiel beenden' : 'Spiel abbrechen';
 }
-$('#btnEnd').onclick = function () {
-  var done = ST && ST.game && ST.game.state.winner !== null;
-  if (!done && !confirm('Spiel abbrechen? Es wird nicht gewertet.')) return;
-  stopA(); sel = null; hold = null; fixMode = false;
-  api('/api/game', 'DELETE').then(function () { showPage('start'); });
-};
+function endGame() { stopA(); sel = null; hold = null; fixMode = false; api('/api/game', 'DELETE').then(function () { showPage('start'); }); }
+function gameDone() { return !!(ST && ST.game && ST.game.state.winner !== null); }
+$('#btnEnd').onclick = function () { if (gameDone() || typeof holdToConfirm !== 'function') { if (gameDone() || confirm('Spiel abbrechen? Es wird nicht gewertet.')) endGame(); } };
+if (typeof holdToConfirm === 'function') holdToConfirm($('#btnEnd'), endGame, {when: function () { return !gameDone(); }, hint: 'Gedrückt halten · wird nicht gewertet'});   // D1
 $('#btnNext').onclick = function () { sel = null; hold = null; api('/api/next', 'POST'); };
 $('#darts3').innerHTML = DART_ICO + DART_ICO + DART_ICO;
 document.addEventListener('keydown', function (e) {

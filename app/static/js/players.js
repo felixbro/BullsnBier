@@ -62,9 +62,11 @@ function renderForm() {
   segment($('#f_hand'), d.hand, function (v) { d.hand = v; });
   $('#pfPlay').onclick = function () { speak(fill(T.next, {name: d.spoken || d.name}), true); };
   $('#pfCancel').onclick = function () { edit(null); };
-  if ($('#pfDel')) $('#pfDel').onclick = function () {
-    if (!confirm(d.name + ' löschen? Statistik bleibt erhalten.')) return;
-    api('/api/players/' + editId, 'DELETE').then(function () { editId = null; draft = null; refreshPlayers().then(loadPlayers); }); };
+  if ($('#pfDel')) {
+    var del = function () { api('/api/players/' + editId, 'DELETE').then(function () { toast('Spieler gelöscht', d.name + ' · Statistik bleibt erhalten', 'ok'); editId = null; draft = null; refreshPlayers().then(loadPlayers); }); };
+    if (typeof holdToConfirm === 'function') holdToConfirm($('#pfDel'), del, {hint: 'Gedrückt halten zum Löschen'});   // D1
+    else $('#pfDel').onclick = function () { if (confirm(d.name + ' löschen? Statistik bleibt erhalten.')) del(); };
+  }
   f.onsubmit = function (e) {
     e.preventDefault(); upd();
     if (!d.name.trim()) return toast('Name fehlt', '', 'info');

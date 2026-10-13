@@ -48,6 +48,7 @@ $('#board').addEventListener('mousemove', function (e) {
 $('#board').addEventListener('mouseleave', function () { $('#hover').textContent = ''; });
 $('#board').addEventListener('click', function (e) {
   var xy = boardXY(e), name = scoreAt(xy[0], xy[1]);
+  if (typeof boardRipple === 'function') boardRipple(xy);   // D2
   if (typeof onBoardClick === 'function') onBoardClick(name, xy);
 });
 

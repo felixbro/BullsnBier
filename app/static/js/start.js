@@ -38,6 +38,7 @@ function loadStart() {
       var p = byId[x.id] || {name: x.name, color: PALETTE[(i + 3) % 8]};
       return '<div class="r"><span class="n">' + (i + 1) + '</span>' + avatar(p, 40) + '<span>' + esc(x.name) + '</span><span class="v">' + x.avg3.toFixed(1) + '</span><span class="l">' + x.legs + '</span></div>';
     }).join('') : '<p class="lead">Heute noch kein Spiel – Zeit für den ersten Pfeil.</p>';
+    if (typeof stagger === 'function') stagger($('#dayRank'));   // D4
     $('#tilePlayers').innerHTML = '<div class="avs">' + PLAYERS.slice(0, 6).map(function (p) { return avatar(p, 48); }).join('') + '</div>';
     $('#tilePlayersMeta').textContent = day.players + ' Stammspieler · ' + day.guests + ' Gäste';
     $('#tileAvg').textContent = day.avg3 ? day.avg3.toFixed(1) : '–';

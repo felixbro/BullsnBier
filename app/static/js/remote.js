@@ -79,11 +79,10 @@ function onBoardClick(name, xy) {
   if (ST && ST.sim) return api('/api/sim/throw', 'POST', {x: xy[0], y: xy[1]});
   api('/api/dart', 'POST', {name: name, pos: xy});
 }
-$('#btnEnd').onclick = function () {
-  var done = ST && ST.game && ST.game.state.winner !== null;
-  if (!done && !confirm('Spiel abbrechen? Es wird nicht gewertet.')) return;
-  rsel = null; api('/api/game', 'DELETE');
-};
+function rDone() { return !!(ST && ST.game && ST.game.state.winner !== null); }
+function rEnd() { rsel = null; api('/api/game', 'DELETE'); }
+$('#btnEnd').onclick = function () { if (rDone()) rEnd(); else if (typeof holdToConfirm !== 'function' && confirm('Spiel abbrechen? Es wird nicht gewertet.')) rEnd(); };
+if (typeof holdToConfirm === 'function') holdToConfirm($('#btnEnd'), rEnd, {when: function () { return !rDone(); }, hint: 'Gedrückt halten'});   // D1
 $('#btnUndo').onclick = function () { rsel = null; api('/api/undo', 'POST'); };
 $('#btnNext').onclick = function () { rsel = null; api('/api/next', 'POST'); };
 
