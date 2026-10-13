@@ -100,7 +100,7 @@ button.hstatus{cursor:pointer;}
 .infobox .lbl{display:flex; align-items:center; gap:8px; font-size:var(--fs-label); color:var(--ink-2);}
 .infobox .way{font-size:52px; font-weight:300; letter-spacing:-.02em; line-height:1.1;}
 .infobox .alt{font-size:var(--fs-meta); color:var(--ink-2);}
-.crtable{display:flex; gap:6px; padding:14px; font-size:var(--fs-ui); --rh:42px;}
+.crtable{position:relative; display:flex; gap:6px; padding:14px; font-size:var(--fs-ui); --rh:42px;}
 .crtable.many{--rh:30px;}
 .crcol{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:5px; border-radius:var(--r-field); padding:4px;
   -webkit-transition:flex-grow 480ms var(--ease-out), background-color 300ms ease-out; transition:flex-grow 480ms var(--ease-out), background-color 300ms ease-out;}
@@ -447,3 +447,44 @@ button.hstatus{cursor:pointer;}
 [data-theme="night"] .fx--winner .fx__veil{background:linear-gradient(150deg, rgba(243,255,172,.94) 0%, rgba(221,249,106,.82) 45%, rgba(230,233,233,.88) 100%);}
 [data-theme="night"] .fx--winner .btn-glass{background:rgba(255,255,255,.5); border-color:rgba(255,255,255,.85); color:#202020;}
 [data-theme="night"] .fx--winner .avatar.ring{box-shadow:0 0 0 3px #fff, 0 0 0 6px var(--pc,var(--p1));}
+
+/* ---- Cricket: Feld geschlossen (3 Varianten, Einstellungen → Anzeige) ---- */
+.crfx{position:absolute; left:10px; right:10px; height:calc(var(--rh) + 8px); top:calc(14px + 4px + 52px + 5px + var(--r) * (var(--rh) + 5px) - 4px);
+  pointer-events:none; border-radius:var(--r-field); overflow:hidden; z-index:2;}
+/* A · Lichtband: Lime-Streifen fegt durch die Zeile, Zelle springt auf */
+.crfx-sweep{background:linear-gradient(90deg, transparent 0%, rgba(221,249,106,0) 30%, rgba(221,249,106,.95) 50%, rgba(255,255,255,.9) 54%, rgba(221,249,106,0) 70%, transparent 100%);
+  background-size:300% 100%; -webkit-animation:cr-sweep 900ms var(--ease-out) both; animation:cr-sweep 900ms var(--ease-out) both;}
+.crfx-sweep i{display:none;}
+@keyframes cr-sweep{0%{background-position:100% 0; opacity:1;} 85%{opacity:1;} 100%{background-position:0 0; opacity:0;}}
+@-webkit-keyframes cr-sweep{0%{background-position:100% 0; opacity:1;} 85%{opacity:1;} 100%{background-position:0 0; opacity:0;}}
+.fx-sweep .m.just{-webkit-animation:cr-pop 520ms var(--ease-back) 250ms both; animation:cr-pop 520ms var(--ease-back) 250ms both;}
+@keyframes cr-pop{0%{transform:scale(1);} 45%{transform:scale(1.22);} 100%{transform:scale(1);}}
+@-webkit-keyframes cr-pop{0%{-webkit-transform:scale(1);} 45%{-webkit-transform:scale(1.22);} 100%{-webkit-transform:scale(1);}}
+/* B · Stempel: Ⓧ knallt rein, Mint-Ring breitet sich aus */
+.crfx-stamp{display:none;}
+.fx-stamp .m.just{position:relative; overflow:visible; -webkit-animation:cr-stamp 480ms var(--ease-back) both; animation:cr-stamp 480ms var(--ease-back) both;}
+.fx-stamp .m.just::after{content:''; position:absolute; inset:0; border-radius:inherit; box-shadow:0 0 0 3px var(--mint);
+  -webkit-animation:cr-ring 700ms var(--ease-out) 200ms both; animation:cr-ring 700ms var(--ease-out) 200ms both;}
+@keyframes cr-stamp{0%{transform:scale(2.4) rotate(-12deg); opacity:0;} 60%{transform:scale(.92) rotate(2deg); opacity:1;} 100%{transform:none;}}
+@-webkit-keyframes cr-stamp{0%{-webkit-transform:scale(2.4) rotate(-12deg); opacity:0;} 60%{-webkit-transform:scale(.92) rotate(2deg); opacity:1;} 100%{-webkit-transform:none;}}
+@keyframes cr-ring{0%{transform:scale(1); opacity:1;} 100%{transform:scale(1.9,2.4); opacity:0;}}
+@-webkit-keyframes cr-ring{0%{-webkit-transform:scale(1); opacity:1;} 100%{-webkit-transform:scale(1.9,2.4); opacity:0;}}
+/* C · Funkenregen: Zeile leuchtet in Spielerfarbe auf, Funken steigen aus der Zeile */
+.crfx-burst{overflow:visible; background:var(--pc); -webkit-animation:cr-row 1000ms ease-out both; animation:cr-row 1000ms ease-out both;}
+.crfx-burst i{position:absolute; top:50%; width:8px; height:8px; border-radius:50%; background:var(--lime); box-shadow:0 0 0 2px #fff;
+  -webkit-animation:cr-spark 900ms var(--ease-out) both; animation:cr-spark 900ms var(--ease-out) both;}
+.crfx-burst i:nth-child(1){left:12%; --dx:-18px; --dy:-46px;} .crfx-burst i:nth-child(2){left:28%; --dx:10px; --dy:-58px; background:var(--coral); --sd:60ms;}
+.crfx-burst i:nth-child(3){left:44%; --dx:-6px; --dy:-64px; --sd:30ms;} .crfx-burst i:nth-child(4){left:60%; --dx:14px; --dy:-52px; background:var(--mint); --sd:90ms;}
+.crfx-burst i:nth-child(5){left:76%; --dx:-12px; --dy:-60px; background:var(--aqua); --sd:40ms;} .crfx-burst i:nth-child(6){left:90%; --dx:16px; --dy:-44px; --sd:110ms;}
+@keyframes cr-row{0%{opacity:0;} 20%{opacity:.55;} 100%{opacity:0;}}
+@-webkit-keyframes cr-row{0%{opacity:0;} 20%{opacity:.55;} 100%{opacity:0;}}
+@keyframes cr-spark{0%{transform:translate(0,0) scale(.4); opacity:0;} 15%{opacity:1;} 100%{transform:translate(var(--dx),var(--dy)) scale(1); opacity:0;}}
+@-webkit-keyframes cr-spark{0%{-webkit-transform:translate(0,0) scale(.4); opacity:0;} 15%{opacity:1;} 100%{-webkit-transform:translate(var(--dx),var(--dy)) scale(1); opacity:0;}}
+.fx-burst .m.just{-webkit-animation:cr-pop 520ms var(--ease-back) 120ms both; animation:cr-pop 520ms var(--ease-back) 120ms both;}
+/* Feld-geschlossen-Effekte starten erst nach einem Vollbild-Effekt (z. B. Triple) */
+.crfx-sweep, .crfx-burst{-webkit-animation-delay:var(--crd,0ms); animation-delay:var(--crd,0ms);}
+.crfx-burst i{-webkit-animation-delay:calc(var(--crd,0ms) + 80ms + var(--sd,0ms)); animation-delay:calc(var(--crd,0ms) + 80ms + var(--sd,0ms));}
+.fx-sweep .m.just{-webkit-animation-delay:calc(var(--crd,0ms) + 250ms); animation-delay:calc(var(--crd,0ms) + 250ms);}
+.fx-burst .m.just{-webkit-animation-delay:calc(var(--crd,0ms) + 120ms); animation-delay:calc(var(--crd,0ms) + 120ms);}
+.fx-stamp .m.just{-webkit-animation-delay:var(--crd,0ms); animation-delay:var(--crd,0ms);}
+.fx-stamp .m.just::after{-webkit-animation-delay:calc(var(--crd,0ms) + 200ms); animation-delay:calc(var(--crd,0ms) + 200ms);}

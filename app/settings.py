@@ -36,6 +36,7 @@ DEFAULTS = {
         "theme": "light",           # light | night
         "host": None,               # Spieler-ID des Gastgebers (Begrüßung, Avatar im Header)
         "anim": {k: True for k in _fx.EVENTS},
+        "cricket_fx": "sweep",       # Cricket-Feld geschlossen: sweep | stamp | burst | off
         "player_colors": list(_fx.PLAYER_COLORS),
         "avatar_style": "notionists",  # Standard für Gäste und Spieler ohne eigenen Stil
     },

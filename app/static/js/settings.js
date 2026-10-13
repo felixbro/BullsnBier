@@ -52,6 +52,7 @@ function subDisplay() {
   $('#scontent').innerHTML =
     '<div class="glass card"><h2 class="h">Anzeige</h2>' + chk('display.hide_previous', 'Würfe des Vorspielers ausblenden, sobald der Nächste dran ist') +
     chk('game.auto_next_sim', 'Simulator: nach 3 Darts startet der nächste Klick direkt die nächste Aufnahme') +
+    '<div class="field"><span>Cricket · Feld geschlossen</span><div class="seg" id="crfx"><button data-v="sweep">Lichtband</button><button data-v="stamp">Stempel</button><button data-v="burst">Funkenregen</button><button data-v="off">Aus</button></div></div>' +
     '<div class="field"><span>Fassung</span><div class="seg" id="theme"><button data-v="light">Hell</button><button data-v="night">Nacht</button></div></div>' +
     '<div class="field"><span>Gastgeber · Begrüßung und Avatar oben rechts</span><div class="pick" id="hostPick">' + PLAYERS.map(function (p) {
       return '<button type="button" class="pchip' + (hostPlayer() && hostPlayer().id === p.id ? ' on' : '') + '" data-id="' + p.id + '" style="--pc:' + p.color + '">' + avatar(p, 40) + esc(p.name) + '</button>'; }).join('') + '</div></div>' +
@@ -61,6 +62,7 @@ function subDisplay() {
     '<div class="glass card"><div class="card-head"><h2 class="h">Animationen</h2>' + chk('display.animations', 'Animationen aktiv') + '</div><div class="checks">' + cols + '</div></div>';
   bindChecks($('#scontent'));
   segment($('#theme'), CFG.display.theme, function (v) { saveSettings({display: {theme: v}}); });
+  segment($('#crfx'), CFG.display.cricket_fx || 'sweep', function (v) { saveSettings({display: {cricket_fx: v}}); });
   api('/api/avatar/styles').then(function (r) { var sel = $('#avDef'); if (!sel) return;
     sel.innerHTML = r.styles.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === CFG.display.avatar_style ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('');
     sel.onchange = function () { saveSettings({display: {avatar_style: sel.value}}); }; });

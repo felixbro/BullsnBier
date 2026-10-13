@@ -85,11 +85,12 @@ function renderLive(m, fxDelay) {
     '<div class="lc-right"><div class="lc-turnhead"><span>Aufnahme</span><span><span class="anim-score" id="turnSumWrap"><b id="turnSum">' + (bust ? 0 : g.mode === 'cricket' ? (dt.lt ? dt.lt.marks || 0 : marksOf(darts)) + ' Marks' : sum) + '</b>' +
     '<span class="sticker" style="left:-78px; top:-6px">Ups</span></span>' + (startScore != null && g.mode !== 'countup' ? ' von ' + startScore : '') + '</span></div>' +
     '<div class="chips" id="chips">' + chips + '</div>' + box +
-    (lastPts.length ? '<div class="meta">Letzte Aufnahmen</div><div class="lastturns">' + lastPts.map(function (t) { return '<span>' + (t.pts || 0) + '</span>'; }).join('') + '</div>' : '') +
+    (lastPts.length && !v.marks ? '<div class="meta">Letzte Aufnahmen</div><div class="lastturns">' + lastPts.map(function (t) { return '<span>' + (t.pts || 0) + '</span>'; }).join('') + '</div>' : '') +
     '<div class="lc-stats">' + (isPoints(g.mode) ? '<div><div class="k">Ø 3 Darts</div><div class="v">' + st.avg.toFixed(1) + '</div></div>' : '<div><div class="k">Runde</div><div class="v">' + s.round + '</div></div>') +
     '<div><div class="k">Darts</div><div class="v">' + st.darts + '</div></div><div><div class="k">High</div><div class="v">' + st.high + '</div></div></div></div>';
   $$('#chips .dart[data-i]').forEach(function (c) { c.onclick = function () { pickSel(dt.ti, +c.dataset.i); }; });
   crAnimate();
+  if ($('#crt')) $('#crt').style.setProperty('--crd', Math.round((fxDelay || 0) * .85) + 'ms');   // nach Vollbild-Effekt
 
   // Score zählt (B14) – bei Vollbild-Effekt ab 85 % seiner Dauer
   var big = $('#bigScore');
@@ -126,19 +127,30 @@ function fitScore(el) {
 
 /* Cricket-Tabelle: Spalte je Spieler. Der Werfer bekommt eine breite, hervorgehobene Spalte mit Namen,
    die anderen Avatar + 3 Buchstaben. Beim Wechsel gleitet die Breite (flex-grow) zum Nächsten. */
-var crLast = null;
+var crLast = null, crSeen = {};   // crSeen: zuletzt angezeigte Marks je Spieler → frisch geschlossene Felder erkennen
 function crTable(g, cur) {
   var s = g.state, nums = Object.keys(s.views[0].marks).sort(function (a, b) { return (a == 25) - (b == 25) || b - a; });
+  var key = g.id || g.mode, closed = [];
+  if (crSeen.key !== key || s.round <= 1 && !g.turns.length) crSeen = {key: key};
+  g.players.forEach(function (_, i) {
+    var mk = s.views[i].marks, old = crSeen[i];
+    nums.forEach(function (n, r) { if (old && (old[n] || 0) < 3 && mk[n] >= 3) closed.push({i: i, n: n, r: r}); });
+    crSeen[i] = JSON.parse(JSON.stringify(mk));
+  });
+  var style = (CFG && CFG.display.cricket_fx) || 'sweep', just = {};
+  closed.forEach(function (c) { just[c.i + ':' + c.n] = 1; });
   var sym = ['', '/', '✕', 'Ⓧ'], from = crLast != null && crLast !== cur && crLast < g.players.length ? crLast : cur;
   var h = '<div class="infobox crtable' + (nums.length > 8 ? ' many' : '') + '" id="crt" data-to="' + cur + '">' +
     '<div class="crcol crnum"><span class="hd"></span>' + nums.map(function (n) { return '<span class="num">' + (n == 25 ? 'B' : n) + '</span>'; }).join('') + '</div>';
   g.players.forEach(function (p, i) {
     h += '<div class="crcol' + (i === from ? ' cur' : '') + '" data-i="' + i + '" style="--pc:' + (p.color || PALETTE[i % 8]) + '"><span class="hd">' + avatar(p, 28) +
       '<span class="nm"><b>' + esc(p.name) + '</b><i>' + esc(p.name.slice(0, 3)) + '</i></span></span>' +
-      nums.map(function (n) { var k = s.views[i].marks[n]; return '<span class="m' + (k >= 3 ? ' c3' : '') + '">' + sym[k] + '</span>'; }).join('') + '</div>';
+      nums.map(function (n) { var k = s.views[i].marks[n]; return '<span class="m' + (k >= 3 ? ' c3' : '') + (just[i + ':' + n] ? ' just' : '') + '">' + sym[k] + '</span>'; }).join('') + '</div>';
   });
   crLast = cur;
-  return h + '</div>';
+  if (style !== 'off') closed.forEach(function (c) {   // Effekt-Ebene über der Zeile
+    h += '<div class="crfx crfx-' + style + '" style="--r:' + c.r + '; --pc:' + (g.players[c.i].color || PALETTE[c.i % 8]) + '"><i></i><i></i><i></i><i></i><i></i><i></i></div>'; });
+  return h.replace('class="infobox crtable', 'class="infobox crtable fx-' + style) + '</div>';
 }
 function crAnimate() {
   var t = $('#crt'); if (!t) return;
