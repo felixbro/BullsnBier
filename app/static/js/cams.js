@@ -29,7 +29,20 @@ function loadCams() {
       var marks = function () { steps(); $$('.mk', box).forEach(function (m) { m.remove(); }); if (!img.naturalWidth) return;
         Object.keys(pts).forEach(function (k) { var m = document.createElement('div'); m.className = 'mk';
           m.style.left = (pts[k][0] / img.naturalWidth * 100) + '%'; m.style.top = (pts[k][1] / img.naturalHeight * 100) + '%'; m.textContent = k; box.appendChild(m); }); };
-      img.onload = marks;
+      var lens = document.createElement('div'); lens.className = 'lens'; box.appendChild(lens);
+      var Z = 4;
+      img.onload = function () { if (img.naturalWidth) box.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight; marks(); };
+      box.onpointermove = function (e) {   // Lupe in der gegenüberliegenden Ecke
+        if (e.pointerType === 'touch' || live) return lens.classList.remove('on');
+        var r = box.getBoundingClientRect(), k = r.width / box.offsetWidth, w = box.offsetWidth, h = box.offsetHeight,
+            x = (e.clientX - r.left) / k, y = (e.clientY - r.top) / k, R = lens.clientWidth / 2;
+        lens.classList.toggle('l', x > w / 2); lens.classList.toggle('r', x <= w / 2);
+        lens.style.backgroundImage = 'url("' + img.src + '")';
+        lens.style.backgroundSize = (w * Z) + 'px ' + (h * Z) + 'px';
+        lens.style.backgroundPosition = (R - x * Z) + 'px ' + (R - y * Z) + 'px';
+        lens.classList.add('on');
+      };
+      box.onpointerleave = function () { lens.classList.remove('on'); };
       segment(sg, cur, function (v) { cur = v; });
       box.onclick = function (e) { var r = img.getBoundingClientRect();
         pts[cur] = [(e.clientX - r.left) / r.width * img.naturalWidth, (e.clientY - r.top) / r.height * img.naturalHeight];
