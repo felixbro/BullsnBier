@@ -1,0 +1,2 @@
+# Natürliche Stimmen (Piper). Optional: fehlt es, spricht die Systemstimme des Browsers.
+piper-tts>=1.3

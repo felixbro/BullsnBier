@@ -66,7 +66,7 @@ start.bat                    :: live mit Kameras (CAMERAS=0,1,2 in config.env)
 autostart-windows.bat        :: optional: Start bei Anmeldung
 ```
 
-Python von python.org mit Haken „Add to PATH“. Zugriff von Handy/Tablet: Windows-Firewall für Port 8090 freigeben.
+Python **3.12 (64-bit)** von python.org mit Haken „Add to PATH“ (3.10–3.13 gehen auch; für ganz neue Versionen fehlen oft noch Pakete wie onnxruntime). `install-windows.bat` sucht die passende Version selbst und lässt sich jederzeit erneut starten. Zugriff von Handy/Tablet: Windows-Firewall für Port 8090 freigeben.
 
 ## Fertige App (ohne Python)
 

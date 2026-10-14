@@ -13,6 +13,7 @@ echo "== Python-Umgebung"
 python3 -m venv .venv
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements-voice.txt || echo "Piper nicht verfügbar – Systemstimme wird genutzt"
 
 [ -f config.env ] || cp config.env.example config.env
 echo "== Natürliche Stimmen (Piper)"
