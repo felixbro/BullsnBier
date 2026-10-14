@@ -1,7 +1,7 @@
 /* Kameras: eine Kamera groß kalibrieren (Auswahl rechts), 4 Punkte auf der Double-Außenkante am Draht */
 var CALK = ['20-1', '6-10', '3-19', '11-14'];
 var CALA = {'20-1': 9, '6-10': 99, '3-19': 189, '11-14': 279};   // Winkel im Uhrzeigersinn ab oben
-var CAMSEL = '0', CALDRAFT = {}, CAMLIVE = false;
+var CAMSEL = '0', CALDRAFT = {}, CAMLIVE = false, CAMMODE = 'cal';
 
 function calLabel(k) { return k.replace('-', ' | '); }
 function miniBoard(k) {   // kleines Board mit markiertem Punkt
@@ -16,7 +16,27 @@ function miniBoard(k) {   // kleines Board mit markiertem Punkt
     '<circle class="pt" cx="' + (Math.sin(a2) * 50).toFixed(1) + '" cy="' + (-Math.cos(a2) * 50).toFixed(1) + '" r="6"/></svg>';
 }
 
+function attachLens(box, img, off) {   // Lupe 4x in der gegenüberliegenden Ecke
+  var lens = document.createElement('div'); lens.className = 'lens'; box.appendChild(lens);
+  box.onpointermove = function (e) {
+    if (e.pointerType === 'touch' || (off && off())) return lens.classList.remove('on');
+    var r = box.getBoundingClientRect(), k = r.width / box.offsetWidth, w = box.offsetWidth, h = box.offsetHeight,
+        x = (e.clientX - r.left) / k, y = (e.clientY - r.top) / k, R = lens.clientWidth / 2, Z = 4;
+    lens.classList.toggle('l', x > w / 2); lens.classList.toggle('r', x <= w / 2);
+    lens.style.backgroundImage = 'url("' + img.src + '")';
+    lens.style.backgroundSize = (w * Z) + 'px ' + (h * Z) + 'px';
+    lens.style.backgroundPosition = (R - x * Z) + 'px ' + (R - y * Z) + 'px';
+    lens.classList.add('on');
+  };
+  box.onpointerleave = function () { lens.classList.remove('on'); };
+}
+
 function loadCams() {
+  segment($('#camMode'), CAMMODE, function (v) { CAMMODE = v; loadCams(); });
+  $('.cams-hint').textContent = CAMMODE === 'train'
+    ? 'Jeder Wurf wird mit Bildern gespeichert. Hier die Spitze je Kamera bestätigen oder genau anklicken – daraus lernt später ein neuronales Netz.'
+    : 'Kamera rechts wählen · 4 Punkte ins Bild tippen · Speichern. Das gelbe Raster muss danach genau auf dem Board liegen.';
+  if (CAMMODE === 'train') return loadTrain();
   var info = ST && ST.detector;
   $('#detPause').classList.toggle('hidden', !info || !info.running);
   $('#detReset').classList.toggle('hidden', !info || !info.running);
@@ -49,8 +69,8 @@ function loadCams() {
           '<div class="acts"><button class="btn-glass live' + (CAMLIVE ? ' on' : '') + '" type="button">' + (CAMLIVE ? 'Standbild' : 'Live-Bild') + '</button><button class="btn-cta save" type="button">Speichern</button></div>' +
         '</div></div>';
 
-    var el = $('#camgrid .cam'), img = $('img', el), box = $('.img', el), Z = 4;
-    var lens = document.createElement('div'); lens.className = 'lens'; box.appendChild(lens);
+    var el = $('#camgrid .cam'), img = $('img', el), box = $('.img', el);
+    attachLens(box, img, function () { return CAMLIVE; });
     var setCur = function (k) {
       cur = k; $('#calNow').textContent = k.split('-').join(' und ');
       $('#miniB').innerHTML = miniBoard(k);
@@ -68,17 +88,6 @@ function loadCams() {
     img.onload = function () { if (img.naturalWidth) box.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight; marks(); };
     $$('.calpts button').forEach(function (b) { b.onclick = function () { setCur(b.dataset.v); }; });
     setCur(cur);
-    box.onpointermove = function (e) {   // Lupe in der gegenüberliegenden Ecke
-      if (e.pointerType === 'touch' || CAMLIVE) return lens.classList.remove('on');
-      var r = box.getBoundingClientRect(), k = r.width / box.offsetWidth, w = box.offsetWidth, h = box.offsetHeight,
-          x = (e.clientX - r.left) / k, y = (e.clientY - r.top) / k, R = lens.clientWidth / 2;
-      lens.classList.toggle('l', x > w / 2); lens.classList.toggle('r', x <= w / 2);
-      lens.style.backgroundImage = 'url("' + img.src + '")';
-      lens.style.backgroundSize = (w * Z) + 'px ' + (h * Z) + 'px';
-      lens.style.backgroundPosition = (R - x * Z) + 'px ' + (R - y * Z) + 'px';
-      lens.classList.add('on');
-    };
-    box.onpointerleave = function () { lens.classList.remove('on'); };
     box.onclick = function (e) {
       var r = img.getBoundingClientRect();
       pts[cur] = [(e.clientX - r.left) / r.width * img.naturalWidth, (e.clientY - r.top) / r.height * img.naturalHeight];
@@ -104,3 +113,58 @@ function loadCams() {
 pageHooks.cams = loadCams;
 $('#detPause').onclick = function () { api('/api/detect/pause', 'POST', {paused: !(ST && ST.detector && ST.detector.paused)}).then(function () { setTimeout(loadCams, 300); }); };
 $('#detReset').onclick = function () { api('/api/detect/reset', 'POST').then(function () { toast('Referenz gesetzt', 'Board ist leer', 'ok'); }); };
+
+/* Trainingsdaten: Spitze je Kamera bestätigen/markieren */
+var TRS = null, TRCAM = null, TRTIPS = {};
+function loadTrain(after) {
+  Promise.all([api('/api/train'), api('/api/train/next' + (after ? '?after=' + encodeURIComponent(after) : ''))]).then(function (r) {
+    var st = r[0], m = r[1];
+    $('#camsMeta').textContent = st.total + ' Würfe gesammelt · ' + st.ok + ' markiert · ' + st.todo + ' offen';
+    var head = '<label class="trcollect"><input type="checkbox" id="trCollect"' + (st.collect ? ' checked' : '') + '> Beim Spielen sammeln</label>';
+    if (!m || !m.sid) {
+      $('#camgrid').innerHTML = '<div class="glass nocams"><h2 class="h">Nichts zu markieren</h2><p class="lead">Einfach spielen – jeder Wurf landet hier. Korrigierte und nicht erkannte Würfe kommen zuerst.</p>' + head + '</div>';
+      $('#trCollect').onchange = function (e) { api('/api/train/collect', 'POST', {on: e.target.checked}); };
+      return;
+    }
+    TRS = m; var cams = Object.keys(m.size || {}).sort();
+    TRTIPS = {};
+    cams.forEach(function (c) { var t = (m.tips || {})[c]; TRTIPS[c] = t !== undefined ? t : ((m.proposal || {})[c] || (m.cam_tips || {})[c] || null); });
+    if (cams.indexOf(TRCAM) < 0) TRCAM = cams[0];
+    var label = {auto: 'automatisch erkannt', corrected: 'korrigiert', unknown: 'nicht erkannt', ok: 'markiert'}[m.status] || m.status;
+    $('#camgrid').innerHTML =
+      '<div class="glass cam big"><div class="img"><img src="/api/train/' + m.sid + '/' + TRCAM + '.jpg" alt=""></div></div>' +
+      '<div class="calside"><div class="glass campick">' + cams.map(function (c) {
+          return '<button type="button" class="cp trthumb' + (c === TRCAM ? ' on' : '') + '" data-c="' + c + '"><img src="/api/train/' + m.sid + '/' + c + '.jpg" alt=""><b>Cam ' + (+c + 1) + '</b>' +
+            '<span class="tag ' + (TRTIPS[c] ? 'ok' : 'bad') + '">' + (TRTIPS[c] ? 'Spitze gesetzt' : 'nicht sichtbar') + '</span></button>'; }).join('') + '</div>' +
+        '<div class="glass calpanel"><div class="calhead"><div><h2 class="h">' + esc(m.name || '?') + '</h2><span class="meta">' + label + (m.detected ? ' · erkannt war ' + esc(m.detected) : '') + '</span></div></div>' +
+          '<p class="calhelp">Gelber Kreis = Spitze des <b>neuen</b> Pfeils (dort, wo er im Board steckt). Liegt er falsch: genau auf die Spitze klicken.</p>' +
+          '<div class="acts"><button class="btn-glass" id="trHide" type="button">Nicht sichtbar</button><button class="btn-cta" id="trOk" type="button">Passt · weiter</button></div>' +
+          '<div class="acts"><button class="btn-glass" id="trSkip" type="button">Überspringen</button><button class="btn-glass" id="trDel" type="button">Löschen</button></div>' +
+          head + '</div></div>';
+    var box = $('#camgrid .cam .img'), img = $('img', box);
+    attachLens(box, img);
+    var mark = function () {
+      $$('.mk', box).forEach(function (x) { x.remove(); });
+      var t = TRTIPS[TRCAM]; if (!t || !img.naturalWidth) return;
+      var k = document.createElement('div'); k.className = 'mk';
+      k.style.left = (t[0] / img.naturalWidth * 100) + '%'; k.style.top = (t[1] / img.naturalHeight * 100) + '%'; box.appendChild(k);
+    };
+    img.onload = function () { box.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight; mark(); };
+    var nextCam = function () { var i = cams.indexOf(TRCAM); if (i < cams.length - 1) { TRCAM = cams[i + 1]; redraw(); } };
+    var redraw = function () {
+      img.src = '/api/train/' + m.sid + '/' + TRCAM + '.jpg';
+      $$('#camgrid .trthumb').forEach(function (b) { var c = b.dataset.c; b.classList.toggle('on', c === TRCAM);
+        var tg = $('.tag', b); tg.className = 'tag ' + (TRTIPS[c] ? 'ok' : 'bad'); tg.textContent = TRTIPS[c] ? 'Spitze gesetzt' : 'nicht sichtbar'; });
+    };
+    box.onclick = function (e) { var r = img.getBoundingClientRect();
+      TRTIPS[TRCAM] = [(e.clientX - r.left) / r.width * img.naturalWidth, (e.clientY - r.top) / r.height * img.naturalHeight];
+      mark(); setTimeout(nextCam, 250); };
+    $$('#camgrid .trthumb').forEach(function (b) { b.onclick = function () { TRCAM = b.dataset.c; redraw(); }; });
+    $('#trHide').onclick = function () { TRTIPS[TRCAM] = null; mark(); redraw(); nextCam(); };
+    var done = function (body) { TRCAM = null; api('/api/train/' + m.sid, 'POST', body).then(function () { loadTrain(m.sid); }); };
+    $('#trOk').onclick = function () { done({tips: TRTIPS}); };
+    $('#trSkip').onclick = function () { done({skip: true}); };
+    $('#trDel').onclick = function () { done({delete: true}); };
+    $('#trCollect').onchange = function (e) { api('/api/train/collect', 'POST', {on: e.target.checked}); };
+  });
+}

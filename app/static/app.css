@@ -520,3 +520,10 @@ button.hstatus{cursor:pointer;}
 .fx-burst .m.just{-webkit-animation-delay:calc(var(--crd,0ms) + 120ms); animation-delay:calc(var(--crd,0ms) + 120ms);}
 .fx-stamp .m.just{-webkit-animation-delay:var(--crd,0ms); animation-delay:var(--crd,0ms);}
 .fx-stamp .m.just::after{-webkit-animation-delay:calc(var(--crd,0ms) + 200ms); animation-delay:calc(var(--crd,0ms) + 200ms);}
+
+/* Kameras · Trainingsdaten */
+#camMode{margin-left:24px;} #camMode button{padding:0 18px;}
+.trthumb{grid-template-columns:120px 1fr !important; grid-template-rows:auto auto;}
+.trthumb img{grid-row:1 / span 2; width:120px; aspect-ratio:16/9; object-fit:cover; border-radius:8px;}
+.trthumb .tag{justify-self:start;}
+.trcollect{display:flex; gap:10px; align-items:center; font-size:var(--fs-ui);}

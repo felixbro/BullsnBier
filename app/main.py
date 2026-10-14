@@ -5,7 +5,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import Response, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, board, db, settings, tts, avatars
+from . import config, board, db, settings, tts, avatars, train
 from .games import Game, MODE_NAMES, RULES, finishable
 from .effects import wled, EVENTS
 
@@ -342,10 +342,11 @@ async def _on_ev(ev, source="cam"):
             await broadcast({"type": "warn", "msg": "Kameras oft uneinig – Kalibrierung prüfen"})
             b = base_state()
             await wled.update((b[0], with_color(b[1])), "cal_warn", {})
-        await handle_dart(ev["score"], [ev["x"], ev["y"]], source)
+        await handle_dart({**ev["score"], "sid": ev.get("sid")}, [ev["x"], ev["y"]], source)
     elif ev["type"] == "takeout":
         await handle_takeout()
     elif ev["type"] == "dart_unknown":
+        S["last_unknown"] = (ev.get("sid"), time.time())
         await broadcast({"type": "warn", "msg": "Pfeil erkannt, Position unklar – bitte manuell eintragen"})
         await emit([{"k": "unknown"}])
 
@@ -444,6 +445,54 @@ def _with_ring(s, pos):
     return s
 
 
+@app.get("/api/train")
+def api_train():
+    return train.stats()
+
+
+@app.post("/api/train/collect")
+def api_train_collect(body: dict):
+    train.set_collect(body.get("on", True))
+    return train.stats()
+
+
+@app.get("/api/train/next")
+def api_train_next(after: str = None):
+    m = train.next_todo(after)
+    if m and detector and m.get("status") == "corrected" and m.get("pos"):   # korrigierte Position → Vorschlag neu
+        import numpy as np
+        for cid, Hm in detector.H.items():
+            if cid in m.get("size", {}):
+                v = np.linalg.inv(Hm) @ np.array([m["pos"][0], m["pos"][1], 1.0])
+                m.setdefault("proposal", {})[cid] = [float(v[0] / v[2]), float(v[1] / v[2])]
+    return m or {}
+
+
+@app.get("/api/train/{sid}/{cid}.jpg")
+def api_train_img(sid: str, cid: str):
+    p = train.image_path(sid, cid) if sid.replace("-", "").isdigit() and cid.isdigit() else None
+    if not p:
+        raise HTTPException(404)
+    return FileResponse(p, media_type="image/jpeg")
+
+
+@app.post("/api/train/{sid}")
+def api_train_mark(sid: str, body: dict):
+    """tips: {cid: [x, y] | null}  (null = Spitze in dieser Kamera nicht sichtbar) · skip: true = Wurf verwerfen"""
+    if not train.read(sid):
+        raise HTTPException(404)
+    if body.get("delete"):
+        train.remove(sid)
+    elif body.get("skip"):
+        train.update(sid, status="skip")
+    else:
+        kw = {"status": "ok", "tips": body.get("tips", {})}
+        if body.get("name"):
+            kw["name"] = body["name"]
+        train.update(sid, **kw)
+    return train.stats()
+
+
 @app.post("/api/dart")
 async def api_dart(body: dict):
     try:
@@ -451,7 +500,11 @@ async def api_dart(body: dict):
     except Exception:
         raise HTTPException(400, "Ungültiges Feld")
     pos = body.get("pos") or board.board_point_for(s["name"])
-    await handle_dart(_with_ring(s, pos), pos, "manual")
+    sid, t = S.get("last_unknown") or (None, 0)
+    if sid and time.time() - t < 30:   # Pfeil war gesehen, aber nicht erkannt → von Hand nachgetragen = Label
+        S["last_unknown"] = None
+        train.update(sid, status="corrected", name=s["name"], pos=body.get("pos"))
+    await handle_dart({**_with_ring(s, pos), "sid": sid}, pos, "manual")
     return {"ok": True}
 
 
@@ -465,7 +518,14 @@ async def api_edit(body: dict):
     ti = body.get("ti")
     ti = len(g.turns) - 1 if ti is None else int(ti)
     winner_before = g.state.get("winner")
-    g.edit_dart(int(body["i"]), {**_with_ring(s, pos), "pos": pos}, ti)
+    try:
+        old = g.turns[ti]["darts"][int(body["i"])]
+    except (IndexError, KeyError):
+        old = {}
+    sid = old.get("sid")
+    if sid and old.get("name") != s["name"]:   # Training: Erkennung lag falsch → Label korrigieren
+        train.update(sid, status="corrected", name=s["name"], pos=body.get("pos"), detected=old.get("name"))
+    g.edit_dart(int(body["i"]), {**_with_ring(s, pos), "pos": pos, "sid": sid}, ti)
     calls = [{"k": "corrected", "d": s["name"]}]
     if g.state.get("winner") is not None and winner_before is None:
         calls += turn_calls(g)

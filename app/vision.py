@@ -4,7 +4,7 @@ os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")   # keine Warnungs-Flut bei f
 import cv2
 import numpy as np
 
-from . import board
+from . import board, train
 
 from .config import DATA
 CAL_FILE = os.path.join(DATA, "calibration.json")
@@ -431,6 +431,7 @@ class Detector(threading.Thread):
         self.H = {}
         self.reload_cal()
         self.ref, self.empty, self.prev = {}, {}, {}
+        self.on_board = []   # Trainings-IDs der Pfeile, die gerade im Board stecken
         self.state = "idle"
         self.stable = 0
         self.paused = False
@@ -467,6 +468,7 @@ class Detector(threading.Thread):
     def reset_reference(self):
         """Board ist leer -> neue Referenz."""
         self.reset_flag = True
+        self.on_board = []
 
     def run(self):
         for c in self.cams:
@@ -510,6 +512,37 @@ class Detector(threading.Thread):
                 continue
             self.state = "idle"
             self.evaluate(frames)
+
+    def collect(self, dbg, p=None, score=None, how=""):
+        """Trainingsdaten: Farbbilder aller Kameras + Vorschlag für die Spitze je Kamera (Pixel)."""
+        try:
+            if not train.collecting():
+                return None
+            imgs, prop, tips, size = {}, {}, {}, {}
+            for c in self.cams:
+                with c.lock:
+                    f = None if c.frame is None else c.frame.copy()
+                if f is None:
+                    continue
+                imgs[c.id] = cv2.imencode(".jpg", f, [cv2.IMWRITE_JPEG_QUALITY, 90])[1].tobytes()
+                size[c.id] = [f.shape[1], f.shape[0]]
+                if p is not None and c.id in self.H:
+                    v = np.linalg.inv(self.H[c.id]) @ np.array([p[0], p[1], 1.0])
+                    prop[c.id] = [float(v[0] / v[2]), float(v[1] / v[2])]
+                r = dbg.get(c.id, (None, None, None))[2]
+                if r:
+                    tips[c.id] = list(r["tip"])
+            if not imgs:
+                return None
+            sid = train.save(imgs, {"status": "auto" if p is not None else "unknown", "pos": list(p) if p is not None else None,
+                                    "name": score.get("name") if score else None, "how": how, "size": size,
+                                    "proposal": prop, "cam_tips": tips, "tips": {}, "prev": list(self.on_board)})
+            if sid:
+                self.on_board.append(sid)
+            return sid
+        except Exception as e:
+            log.warning("Trainingsdaten nicht gespeichert: %s", e)
+            return None
 
     def debug_shot(self, dbg, name):
         if DEBUG_KEEP <= 0 or not dbg:
@@ -567,6 +600,7 @@ class Detector(threading.Thread):
             self.ref = dict(frames)
             self.empty = dict(frames)   # Lichtdrift mitnehmen
             log.info("Takeout erkannt (Rest %d px)", empty_area)
+            self.on_board = []
             self.on_event({"type": "takeout"})
             return
         self.ref = dict(frames)
@@ -583,7 +617,7 @@ class Detector(threading.Thread):
             if p is not None:
                 d = {k: math.hypot(v[0] - p[0], v[1] - p[1]) for k, v in results.items()}
         if p is None:
-            self.on_event({"type": "dart_unknown", "areas": areas})
+            self.on_event({"type": "dart_unknown", "areas": areas, "sid": self.collect(dbg)})
             return
         s = board.score(*p)
         agree = sum(1 for v in d.values() if v <= FUSE_MM)
@@ -591,5 +625,6 @@ class Detector(threading.Thread):
         self.debug_shot(dbg, s.get("name"))
         log.info("Dart %s (%s) · %s", s.get("name"), how, " · ".join(
             f"Cam {int(k) + 1}: {d[k]:.0f} mm" for k in sorted(d)))
-        self.on_event({"type": "dart", "x": p[0], "y": p[1], "score": s, "spread": spread, "agree": agree, "n": len(d),
+        sid = self.collect(dbg, p, s, how)
+        self.on_event({"type": "dart", "sid": sid, "x": p[0], "y": p[1], "score": s, "spread": spread, "agree": agree, "n": len(d),
                        "cams": {k: list(v) for k, v in results.items()}})

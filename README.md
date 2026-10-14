@@ -149,6 +149,7 @@ Leerlauf · Spielstart · Bull-Off · Nächster Spieler · Finish-Bereich · Pfe
 | `PORT` | 8090 | |
 | `DIFF_THR` | 28 | Helligkeitsschwelle |
 | `DART_MIN` / `DART_MAX` | 250 / 40000 | Fläche Pfeil / ab hier Hand |
+| `TRAIN_MAX` | 5000 | Trainingsdaten: max. gespeicherte Würfe (`data/train/`, ca. 0,5 MB je Wurf) |
 | `TAKEOUT_PX` | 3 × DART_MIN | Restabweichung zum leeren Board = Pfeile gezogen |
 | `STABLE_FRAMES` | 6 | Ruhe-Frames bis Auswertung |
 | `FUSE_MM` | 12 | Ausreißer zwischen Kameras |
