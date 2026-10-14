@@ -29,6 +29,16 @@ JPG_Q = (70, 95)              # JPEG-Qualität zufällig
 # darin cam0.jpg, cam1.jpg, cam2.jpg (= Inhalt vom „Snapshot (ZIP)“ der App, leeres Board).
 # Das Board-Objekt (Name "Board", Scheibe bis inkl. Zahlenring, r ≥ 23 cm) wird dann unsichtbar und fängt nur Schatten.
 BG_DIR = r""                  # z. B. r"C:\Users\fb\Nextcloud\elberfeld\Projekte\BullsnBier\BnB_Hintergrund"
+# ── Andere Aufbauten simulieren (wichtig, damit das Netz nicht nur DEIN Setup kann) ──
+P_RIG = 0.3                   # Anteil Frames mit deinen echten Kamerapositionen (BnB_Rig), Rest = Zufallskameras
+CAM_RADIUS = (24.0, 42.0)     # cm Abstand Kamera ↔ Board-Mitte (in der Board-Ebene gemessen)
+CAM_HEIGHT = (15.0, 34.0)     # cm Höhe vor dem Board
+CAM_FOV = (65.0, 105.0)       # ° horizontaler Bildwinkel
+CAM_SPREAD = 25.0             # ° Abweichung vom 120°-Raster
+BG_RANDOM_DIR = r""           # Ordner mit beliebigen Fotos (Räume, Wände, Kneipen …) → zufälliger Hintergrund
+BOARD_TEX_DIR = r""           # optional: verschiedene Board-Texturen → Material "Board" (Bitmap im Farbkanal)
+# Objekte mit diesen Namen bekommen pro Frame eine Zufallsfarbe (ihr Material gleichen Namens): Umrandung, Wand, Gehäuse
+RANDOM_COLOR_OBJECTS = ["Umrandung", "Wand", "Gehäuse"]
 # Abmessungen fürs Verdeckungs-Modell (cm): Barrel-/Schaft-Radius, Flight-Radius, Pfeillänge
 R_BARREL, R_FLIGHT, LEN, FLIGHT_LEN = 0.45, 1.8, 15.0, 3.8
 # Häufige Ziele (mm) – echte Würfe häufen sich hier; Rest gleichmäßig verteilt
@@ -169,6 +179,25 @@ def make_default_models(doc):
     return root
 
 
+def random_cam(rng, idx, base_deg):
+    """Zufällige, aber plausible Kamera: rund ums Board, schräg von vorne, Bild-oben = vom Board weg.
+    Rückgabe (pos, right, up, fwd) als Tupel."""
+    az = math.radians(base_deg + idx * 120 + rng.uniform(-CAM_SPREAD, CAM_SPREAD))
+    r, h = rng.uniform(*CAM_RADIUS), rng.uniform(*CAM_HEIGHT)
+    pos = (r * math.cos(az), r * math.sin(az), -h)
+    aim = (rng.uniform(-6, 6), rng.uniform(-6, 6), 0.0)
+    fwd = norm(sub(aim, pos))
+    right = norm(cross((0, 0, -1), fwd)); up = cross(fwd, right)
+    roll = math.radians(rng.uniform(-4, 4))
+    right, up = rotate(right, fwd, roll), rotate(up, fwd, roll)
+    return pos, right, up, fwd
+
+
+def image_files(d):
+    if not d or not os.path.isdir(d): return []
+    return [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.lower().endswith((".jpg", ".jpeg", ".png", ".tif", ".exr", ".hdr"))]
+
+
 def setup_background(doc):
     """Hintergrund-Objekt mit Bitmap-Material + Compositing-Tag am Board. Rückgabe: Bitmap-Shader."""
     bg = find(doc, "BnB_Hintergrund")
@@ -222,6 +251,11 @@ def main():
     led, amb, hand = find(doc, "LED_Ring"), find(doc, "Umgebung"), find(doc, "Hand")
     hand_poly = first_poly(hand.GetDown()) if hand and hand.GetType() != c4d.Opolygon else hand
     base = {c.GetName(): c.GetMg() for c in cams}
+    base_focus = {c.GetName(): c[c4d.CAMERA_FOCUS] for c in cams}
+    board_tex = image_files(BOARD_TEX_DIR); board_shader = None
+    bm = doc.SearchMaterial("Board")
+    if board_tex and bm and bm[c4d.MATERIAL_COLOR_SHADER] and bm[c4d.MATERIAL_COLOR_SHADER].GetType() == c4d.Xbitmap:
+        board_shader = bm[c4d.MATERIAL_COLOR_SHADER]; board_tex_before = board_shader[c4d.BITMAPSHADER_FILENAME]
     base_led = (led[c4d.LIGHT_BRIGHTNESS], led[c4d.LIGHT_COLOR]) if led else None
     base_amb = amb[c4d.LIGHT_BRIGHTNESS] if amb else None
     hand_base = hand.GetMg() if hand else None
@@ -234,7 +268,9 @@ def main():
     inst = holder.GetChildren()[:3]
 
     rd = doc.GetActiveRenderData(); W, H = int(rd[c4d.RDATA_XRES]), int(rd[c4d.RDATA_YRES])
-    bgs = bg_sets(); bg_shader = setup_background(doc) if bgs else None
+    bgs = bg_sets(); rnd_bg = image_files(BG_RANDOM_DIR)
+    bg_shader = setup_background(doc) if (bgs or rnd_bg) else None
+    board_obj = find(doc, "Board"); comp = board_obj.GetTag(c4d.Tcompositing) if board_obj else None
     if BG_DIR and not bgs: print("Hinweis: BG_DIR ohne cam0.jpg … – rendere ohne Foto-Hintergrund.")
     bd = doc.GetActiveBaseDraw(); cam_before = bd.GetSceneCamera(doc)
     start = START
@@ -249,12 +285,26 @@ def main():
     try:
         for n, fr in enumerate(frames):
             rng = random.Random(fr * 7919 + 13)
-            # Kameras leicht verwackeln
-            for c in cams:
-                m = base[c.GetName()]
-                off = add(T(m.off), tuple(rng.uniform(-CAM_POS_JIT, CAM_POS_JIT) for _ in range(3)))
-                ax = norm((rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1))); ang = math.radians(rng.uniform(-CAM_ROT_JIT, CAM_ROT_JIT))
-                c.SetMg(c4d.Matrix(V(off), V(rotate(T(m.v1), ax, ang)), V(rotate(T(m.v2), ax, ang)), V(rotate(T(m.v3), ax, ang))))
+            # Kameras: echtes Rig (leicht verwackelt) oder zufälliger Aufbau
+            use_rig = rng.random() < P_RIG
+            rig_off = rng.uniform(0, 360)   # Kamera-Anordnung zufällig ums Board gedreht
+            for ci, c in enumerate(cams):
+                if use_rig:
+                    m = base[c.GetName()]
+                    off = add(T(m.off), tuple(rng.uniform(-CAM_POS_JIT, CAM_POS_JIT) for _ in range(3)))
+                    ax = norm((rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1))); ang = math.radians(rng.uniform(-CAM_ROT_JIT, CAM_ROT_JIT))
+                    c.SetMg(c4d.Matrix(V(off), V(rotate(T(m.v1), ax, ang)), V(rotate(T(m.v2), ax, ang)), V(rotate(T(m.v3), ax, ang))))
+                    c[c4d.CAMERA_FOCUS] = base_focus[c.GetName()]
+                else:
+                    pos, rt, up, fw = random_cam(rng, ci, rig_off)
+                    c.SetMg(c4d.Matrix(V(pos), V(rt), V(up), V(fw)))
+                    c[c4d.CAMERA_FOCUS] = c[c4d.CAMERAOBJECT_APERTURE] / (2 * math.tan(math.radians(rng.uniform(*CAM_FOV)) / 2))
+            # Hintergrund / Board-Look
+            for nm in RANDOM_COLOR_OBJECTS:
+                mt = doc.SearchMaterial(nm)
+                if mt: mt[c4d.MATERIAL_COLOR_COLOR] = c4d.Vector(rng.random(), rng.random(), rng.random()) * rng.uniform(0.2, 1.0)
+            if board_tex and board_shader:
+                board_shader[c4d.BITMAPSHADER_FILENAME] = rng.choice(board_tex)
             # Licht
             if led:
                 led[c4d.LIGHT_BRIGHTNESS] = base_led[0] * rng.uniform(0.55, 1.35)
@@ -320,11 +370,13 @@ def main():
             # Rendern
             fdir = os.path.join(OUT, "%06d" % fr)
             if not os.path.isdir(fdir): os.makedirs(fdir)
-            bg_set = rng.choice(bgs) if bgs else None
+            bg_set = rng.choice(bgs) if (bgs and use_rig) else None   # echtes Foto passt nur zum echten Rig
+            if comp: comp[c4d.COMPOSITINGTAG_BACKGROUND] = bool(bg_set)   # sonst ist das 3D-Board sichtbar
             for ci, c in enumerate(cams):
                 bd.SetSceneCamera(c)
-                if bg_shader:   # Foto der passenden Kamera hinter die Szene
-                    bg_shader[c4d.BITMAPSHADER_FILENAME] = os.path.join(bg_set, "cam%d.jpg" % ci)
+                if bg_shader:
+                    bg_shader[c4d.BITMAPSHADER_FILENAME] = (os.path.join(bg_set, "cam%d.jpg" % ci) if bg_set
+                                                            else (rng.choice(rnd_bg) if rnd_bg else ""))
                     doc.ExecutePasses(None, True, True, True, c4d.BUILDFLAGS_NONE)
                 bmp = c4d.bitmaps.BaseBitmap(); bmp.Init(W, H, 24)
                 if c4d.documents.RenderDocument(doc, rd.GetData(), bmp, c4d.RENDERFLAGS_EXTERNAL) != c4d.RENDERRESULT_OK:
@@ -332,7 +384,7 @@ def main():
                 bc = c4d.BaseContainer(); bc[c4d.JPGSAVER_QUALITY] = rng.randint(*JPG_Q)
                 bmp.Save(os.path.join(fdir, "cam%d.jpg" % (ci + 1)), c4d.FILTER_JPG, bc)
             with open(os.path.join(fdir, "labels.json"), "w") as fh:
-                json.dump({"frame": fr, "res": [W, H], "hand": show_hand, "bg": os.path.basename(bg_set) if bg_set else None, "darts": len(darts), "cams": labels}, fh, indent=1)
+                json.dump({"frame": fr, "res": [W, H], "hand": show_hand, "bg": os.path.basename(bg_set) if bg_set else "random", "rig": use_rig, "darts": len(darts), "cams": labels}, fh, indent=1)
             c4d.StatusSetBar(100.0 * (n + 1) / COUNT); el = time.time() - t0; eta = el / (n + 1) * (COUNT - n - 1)
             c4d.StatusSetText("BnB: Frame %d (%d/%d) · %.1f s/Frame · noch ca. %d min" % (fr, n + 1, COUNT, el / (n + 1), eta / 60))
             if n < 3 or n % 50 == 0: print("Frame %d: %.1f s/Frame, Rest ca. %.0f min" % (fr, el / (n + 1), eta / 60))
@@ -341,7 +393,8 @@ def main():
                 print("Abgebrochen bei Frame %d – neu starten, START=\"auto\" macht automatisch weiter" % fr); break
     finally:
         if not PREVIEW:   # Szene zurücksetzen
-            for c in cams: c.SetMg(base[c.GetName()])
+            for c in cams: c.SetMg(base[c.GetName()]); c[c4d.CAMERA_FOCUS] = base_focus[c.GetName()]
+            if board_shader: board_shader[c4d.BITMAPSHADER_FILENAME] = board_tex_before
             if led: led[c4d.LIGHT_BRIGHTNESS], led[c4d.LIGHT_COLOR] = base_led
             if amb: amb[c4d.LIGHT_BRIGHTNESS] = base_amb
             if hand: hand.SetMg(hand_base)
