@@ -163,6 +163,34 @@ def find_tip(diff_mask, Hm, roi=None):
             "seg": ((float(a_lo[0]), float(a_lo[1])), (float(a_hi[0]), float(a_hi[1])))}
 
 
+def cal_quality(Hs):
+    """Kalibrier-Check mit Kameramodell: gemeinsame Brennweite aller Kameras, je Kamera Rückprojektionsfehler (px).
+    Gute Klicks: < 3 px. Über ~6 px liegt mindestens ein Punkt daneben."""
+    if not Hs:
+        return {}
+    cx, cy = W / 2, H / 2
+    def focal(G):
+        best = (1e9, 0)
+        for f in range(int(W * 0.15), int(W * 3), 2):
+            A = np.linalg.inv(np.array([[f, 0, cx], [0, f, cy], [0, 0, 1.0]])) @ G
+            n1, n2 = np.linalg.norm(A[:, 0]), np.linalg.norm(A[:, 1])
+            best = min(best, ((A[:, 0] @ A[:, 1] / (n1 * n2)) ** 2 + ((n1 - n2) / n1) ** 2, f))
+        return best[1]
+    f = float(np.median([focal(np.linalg.inv(Hm)) for Hm in Hs.values()]))
+    K = np.array([[f, 0, cx], [0, f, cy], [0, 0, 1.0]])
+    out = {}
+    for k, Hm in Hs.items():
+        obj = np.array([[*board.CAL_POINTS[p], 0.0] for p in ("20-1", "6-10", "3-19", "11-14")])
+        img = cv2.perspectiveTransform(obj[:, :2].reshape(-1, 1, 2), np.linalg.inv(Hm)).reshape(-1, 2)
+        try:
+            ok, rv, tv = cv2.solvePnP(obj, img, K, None, flags=cv2.SOLVEPNP_IPPE)
+            pr = cv2.projectPoints(obj, rv, tv, K, None)[0].reshape(-1, 2)
+            out[k] = round(float(np.linalg.norm(pr - img, axis=1).max()), 1)
+        except cv2.error:
+            out[k] = None
+    return out
+
+
 def board_line(Hm, line):
     """Pfeilachse aus dem Kamerabild auf die Board-Ebene projizieren → (Punkt, Einheitsrichtung) in mm.
     Die Spitze steckt in der Ebene, also liegt sie auf dieser Linie – egal welches Ende im Bild die Spitze ist."""

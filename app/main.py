@@ -666,6 +666,12 @@ def api_cal_get():
     return {c.id: detector.points(c.id) for c in detector.cams} if detector else {}
 
 
+@app.get("/api/cal/quality")
+def api_cal_quality():
+    from .vision import cal_quality
+    return cal_quality(detector.H) if detector and len(detector.H) >= 2 else {}
+
+
 @app.post("/api/cal/{cid}")
 async def api_cal(cid: str, body: dict):
     _cam(cid)
