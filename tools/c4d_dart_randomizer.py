@@ -136,6 +136,35 @@ def first_poly(o):
     return None
 
 
+def make_default_models(doc):
+    """Kein 'Pfeil-Modelle' da → 4 einfache Pfeile aus Grundobjekten bauen (Spitze im Ursprung, entlang -Z)."""
+    root = c4d.BaseObject(c4d.Onull); root.SetName("Pfeil-Modelle"); doc.InsertObject(root)
+    def mat(name, rgb):
+        m = c4d.BaseMaterial(c4d.Mmaterial); m.SetName(name); m[c4d.MATERIAL_COLOR_COLOR] = c4d.Vector(*rgb)
+        doc.InsertMaterial(m); return m
+    def part(kind, parent, name, z, m, **kw):
+        o = c4d.BaseObject(kind); o.SetName(name)
+        for k, v in kw.items(): o[getattr(c4d, k)] = v
+        o.SetRelPos(c4d.Vector(0, 0, z)); o.InsertUnderLast(parent)
+        t = o.MakeTag(c4d.Ttexture); t[c4d.TEXTURETAG_MATERIAL] = m
+        return o
+    steel, shaft = mat("BnB Stahl", (0.75, 0.75, 0.78)), mat("BnB Schaft", (0.08, 0.08, 0.08))
+    for i, (col, barrel_len, shaft_len) in enumerate([((0.85, 0.08, 0.1), 4.6, 3.4), ((0.05, 0.05, 0.05), 5.0, 4.2),
+                                                      ((0.1, 0.35, 0.9), 4.2, 2.8), ((0.95, 0.95, 0.95), 4.8, 3.6)]):
+        d = c4d.BaseObject(c4d.Onull); d.SetName("Pfeil %d" % (i + 1)); d.InsertUnderLast(root)
+        fl = mat("BnB Flight %d" % (i + 1), col)
+        z = 0.0
+        part(c4d.Ocone, d, "Spitze", z - 1.6, steel, PRIM_CONE_TRAD=0.13, PRIM_CONE_BRAD=0.03, PRIM_CONE_HEIGHT=3.2, PRIM_AXIS=5); z -= 3.2
+        part(c4d.Ocylinder, d, "Barrel", z - barrel_len / 2, steel, PRIM_CYLINDER_RADIUS=0.35, PRIM_CYLINDER_HEIGHT=barrel_len, PRIM_AXIS=5); z -= barrel_len
+        part(c4d.Ocylinder, d, "Schaft", z - shaft_len / 2, shaft, PRIM_CYLINDER_RADIUS=0.2, PRIM_CYLINDER_HEIGHT=shaft_len, PRIM_AXIS=5)
+        zf = z - shaft_len + 1.2   # Flight sitzt hinten auf dem Schaft
+        for ax in (0, 2):   # zwei gekreuzte Flächen = 4 Flügel
+            part(c4d.Oplane, d, "Flight", zf - 1.9, fl, PRIM_PLANE_WIDTH=3.6, PRIM_PLANE_HEIGHT=3.8, PRIM_AXIS=ax,
+                 PRIM_PLANE_SUBW=1, PRIM_PLANE_SUBH=1)
+    c4d.EventAdd()
+    return root
+
+
 def project(cam, p, W, H):
     """Weltpunkt → Pixel (u, v), Tiefe z."""
     m = cam.GetMg(); off, v1, v2, v3 = T(m.off), norm(T(m.v1)), norm(T(m.v2)), norm(T(m.v3))
@@ -148,8 +177,13 @@ def project(cam, p, W, H):
 def main():
     doc = c4d.documents.GetActiveDocument()
     rig, models_null = find(doc, "BnB_Rig"), find(doc, "Pfeil-Modelle")
-    if not rig or not models_null or not models_null.GetDown():
-        c4d.gui.MessageDialog("Fehlt: 'BnB_Rig' oder 'Pfeil-Modelle' (mit mindestens einem Pfeil darunter)."); return
+    if not rig:
+        c4d.gui.MessageDialog("Fehlt: 'BnB_Rig' – erst c4d_bullsnbier_cameras.py ausführen."); return
+    if not models_null or not models_null.GetDown():
+        if models_null: models_null.Remove()
+        models_null = make_default_models(doc)
+        c4d.gui.MessageDialog("'Pfeil-Modelle' fehlte – 4 einfache Platzhalter-Pfeile angelegt.\n"
+                              "Eigene Modelle einfach darunter legen (Spitze = Ursprung, Pfeil entlang -Z) und Skript erneut starten.")
     cams = [c for c in rig.GetChildren() if c.GetType() == c4d.Ocamera]
     models = models_null.GetChildren()
     models_null.SetRenderMode(c4d.MODE_OFF); models_null.SetEditorMode(c4d.MODE_OFF)
