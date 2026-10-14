@@ -120,22 +120,38 @@ def fuse(points):
     return float(p[0]), float(p[1])
 
 
+def fourcc_str(cap):
+    v = int(cap.get(cv2.CAP_PROP_FOURCC)) & 0xFFFFFFFF
+    t = "".join(chr((v >> 8 * i) & 0xFF) for i in range(4))
+    return t if t.isalnum() else "?"
+
+
 def open_capture(src):
     """Plattformgerecht öffnen: Windows = DirectShow (Index 0,1,2 …), Linux = V4L2 (/dev/videoX)."""
     s = str(src).strip()
     if sys.platform.startswith("win") and s.isdigit():
-        # MJPG + Auflösung schon beim Öffnen setzen: sonst startet DirectShow im unkomprimierten Format,
-        # und bei 3 Kameras an einem USB-Controller reicht die Bandbreite für die dritte nicht.
-        params = [cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"), cv2.CAP_PROP_FRAME_WIDTH, W, cv2.CAP_PROP_FRAME_HEIGHT, H]
-        for api in (cv2.CAP_DSHOW, cv2.CAP_MSMF):
-            try:
-                cap = cv2.VideoCapture(int(s), api, params)
-            except Exception:
-                cap = cv2.VideoCapture(int(s), api)
-            if cap.isOpened():
+        # Ziel: MJPG (komprimiert). Bleibt eine Kamera bei YUY2, reicht die USB-Bandbreite nicht für drei.
+        # DirectShow übernimmt MJPG oft nur, wenn FOURCC vor UND nach der Auflösung gesetzt wird; sonst MSMF probieren.
+        want = os.environ.get("CAM_BACKEND", "").lower()
+        apis = {"dshow": [cv2.CAP_DSHOW], "msmf": [cv2.CAP_MSMF]}.get(want, [cv2.CAP_DSHOW, cv2.CAP_MSMF])
+        last = None
+        for api in apis:
+            cap = cv2.VideoCapture(int(s), api)
+            if not cap.isOpened():
+                cap.release(); continue
+            mjpg = cv2.VideoWriter_fourcc(*"MJPG")
+            cap.set(cv2.CAP_PROP_FOURCC, mjpg)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
+            cap.set(cv2.CAP_PROP_FOURCC, mjpg)
+            if fourcc_str(cap) == "MJPG" or api == apis[-1]:
+                if last is not None:
+                    last.release()
                 return cap
-            cap.release()
-        return cap
+            if last is not None:
+                last.release()
+            last = cap   # DSHOW ohne MJPG merken, falls MSMF gar nicht geht
+        return last if last is not None else cv2.VideoCapture(int(s), cv2.CAP_DSHOW)
     if sys.platform.startswith("win"):
         return cv2.VideoCapture(s)  # RTSP/HTTP-Stream oder Videodatei
     if s.isdigit():
@@ -165,7 +181,7 @@ def test_cameras(srcs, seconds=4):
         fourcc = int(cap.get(cv2.CAP_PROP_FOURCC)) if cap.isOpened() else 0
         out.append({"src": s, "open": cap.isOpened(), "fps": round(n / seconds, 1),
                     "w": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), "h": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                    "fmt": "".join(chr((fourcc >> 8 * i) & 0xFF) for i in range(4)) if fourcc else "-"})
+                    "fmt": fourcc_str(cap) if fourcc else "-"})
         cap.release()
     return out
 
