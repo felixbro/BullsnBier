@@ -527,3 +527,4 @@ button.hstatus{cursor:pointer;}
 .trthumb img{grid-row:1 / span 2; width:120px; aspect-ratio:16/9; object-fit:cover; border-radius:8px;}
 .trthumb .tag{justify-self:start;}
 .trcollect{display:flex; gap:10px; align-items:center; font-size:var(--fs-ui);}
+.calq{align-self:center; font-size:var(--fs-micro); opacity:.6;}

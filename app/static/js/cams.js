@@ -48,7 +48,8 @@ function loadCams() {
   $('#camsMeta').textContent = info.cams.filter(function (c) { return c.ok; }).length + ' / ' + info.cams.length + ' verbunden · ' + info.fps + ' fps';
   $('#detPause').textContent = info.paused ? 'Erkennung fortsetzen' : 'Erkennung pausieren';
   if (!info.cams.some(function (c) { return c.id === CAMSEL; })) CAMSEL = info.cams[0].id;
-  api('/api/cal').then(function (cal) {
+  Promise.all([api('/api/cal'), api('/api/cal/quality').catch(function () { return {}; })]).then(function (rr) {
+    var cal = rr[0], q = rr[1] || {};
     var c = info.cams.filter(function (x) { return x.id === CAMSEL; })[0], id = c.id;
     var pts = CALDRAFT[id] || (CALDRAFT[id] = {});
     if (!Object.keys(pts).length) CALK.forEach(function (k) { if (cal[id] && cal[id][k]) pts[k] = cal[id][k]; });
@@ -60,7 +61,7 @@ function loadCams() {
       '<div class="calside">' +
         '<div class="glass campick">' + info.cams.map(function (x) {
           return '<button type="button" class="cp' + (x.id === id ? ' on' : '') + '" data-id="' + x.id + '"><b>Cam ' + (+x.id + 1) + '</b><small>' + esc(x.src) + '</small>' +
-            '<span class="tagrow"><span class="tag ' + (x.ok ? 'ok' : 'bad') + '">' + (x.ok ? 'verbunden' : 'offline') + '</span><span class="tag ' + (x.cal ? 'ok' : 'bad') + '">' + (x.cal ? 'kalibriert' : 'offen') + '</span></span></button>';
+            '<span class="tagrow"><span class="tag ' + (x.ok ? 'ok' : 'bad') + '">' + (x.ok ? 'verbunden' : 'offline') + '</span><span class="tag ' + (x.cal && !(q[x.id] > 6) ? 'ok' : 'bad') + '">' + (!x.cal ? 'offen' : q[x.id] > 6 ? 'ungenau – neu klicken' : 'kalibriert') + '</span>' + (x.cal && q[x.id] != null ? '<span class="calq">± ' + q[x.id] + ' px</span>' : '') + '</span></button>';
         }).join('') + '</div>' +
         '<div class="glass calpanel"><div class="calhead"><div><h2 class="h">Cam ' + (+id + 1) + '</h2><span class="meta">Punkt <b class="stepn">0 / 4</b></span></div><div id="miniB"></div></div>' +
           '<p class="calhelp">Auf die <b>Außenkante des Double-Rings</b> genau dort tippen, wo der <b>Draht zwischen <span id="calNow"></span></b> sie kreuzt.</p>' +
