@@ -109,7 +109,7 @@ var ICO = {
 };
 function toast(title, sub, kind, key) {
   kind = kind || 'info';
-  var box = $('#toasts'), stay = kind === 'warn';
+  var box = $('#toasts'), stay = kind === 'warn' && !(key && key.indexOf('w:') === 0);   // Hinweise (w:) gehen von selbst
   if (key) { var old = $('[data-key="' + key + '"]', box); if (old) old.remove(); }
   var t = document.createElement('div');
   t.className = 'toast ' + kind + (stay ? ' stay' : '');
@@ -120,7 +120,7 @@ function toast(title, sub, kind, key) {
   while (box.children.length > 3) box.removeChild(box.lastChild);
   play(t);
   if (stay) $('.x', t).onclick = function () { t.remove(); };
-  else setTimeout(function () { t.remove(); }, 3600);
+  else setTimeout(function () { t.remove(); }, kind === 'warn' ? 7000 : 3600);
   $('#live').textContent = title + (sub ? ', ' + sub : '');
   return t;
 }

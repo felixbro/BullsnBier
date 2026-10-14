@@ -1,5 +1,5 @@
 """Kamera-Erfassung + Pfeilerkennung (Differenzbild, Spitze, Homographie, Fusion)."""
-import json, math, os, sys, threading, time
+import json, logging, math, os, sys, threading, time
 os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")   # keine Warnungs-Flut bei fehlender Kamera (Status steht in der App)
 import cv2
 import numpy as np
@@ -16,6 +16,8 @@ STABLE_FRAMES = int(os.environ.get("STABLE_FRAMES", 6))
 DART_MIN = int(os.environ.get("DART_MIN", 250))          # min. Fläche eines Pfeils
 DART_MAX = int(os.environ.get("DART_MAX", 40000))        # darüber = Hand/Takeout
 DIFF_THR = int(os.environ.get("DIFF_THR", 28))
+log = logging.getLogger("uvicorn.error")
+TAKEOUT_PX = int(os.environ.get("TAKEOUT_PX", 0)) or DART_MIN * 3   # Restabweichung zum leeren Board
 FUSE_MM = float(os.environ.get("FUSE_MM", 12))           # Ausreißer-Grenze zwischen Kameras
 
 
@@ -356,24 +358,28 @@ class Detector(threading.Thread):
                     if math.hypot(bx, by) < 260:
                         results[k] = (bx, by)
         big = max(areas.values()) if areas else 0
-
-        if big > DART_MAX:
-            # Hand im Bild / Pfeile gezogen? Gegen leeres Board prüfen
-            empty_area = max(int(cv2.countNonZero(mask(frames[k], self.empty.get(k, frames[k]))))
-                             for k in frames)
-            self.ref = dict(frames)
-            if empty_area < DART_MIN:
-                self.empty = dict(frames)
-                self.on_event({"type": "takeout"})
-            return
         if big < DART_MIN:
             return  # Rauschen
+        # Pfeile gezogen? Board sieht (fast) wieder aus wie leer → Takeout, egal ob mit Hand dazwischen
+        empty_area = max(int(cv2.countNonZero(mask(frames[k], self.empty.get(k, frames[k])))) for k in frames)
+        if empty_area < TAKEOUT_PX and empty_area < big * 0.35:   # neuer Pfeil: empty_area ≈ big
+            self.ref = dict(frames)
+            self.empty = dict(frames)   # Lichtdrift mitnehmen
+            log.info("Takeout erkannt (Rest %d px)", empty_area)
+            self.on_event({"type": "takeout"})
+            return
         self.ref = dict(frames)
+        if big > DART_MAX:
+            return  # Hand im Bild – abwarten
         p = fuse(list(results.values()))
         if p is None:
             self.on_event({"type": "dart_unknown", "areas": areas})
             return
         s = board.score(*p)
-        spread = max((math.hypot(v[0] - p[0], v[1] - p[1]) for v in results.values()), default=0.0)
-        self.on_event({"type": "dart", "x": p[0], "y": p[1], "score": s, "spread": spread,
+        d = {k: math.hypot(v[0] - p[0], v[1] - p[1]) for k, v in results.items()}
+        agree = sum(1 for v in d.values() if v <= FUSE_MM)
+        spread = max(d.values(), default=0.0)
+        log.info("Dart %s · %s", s.get("name"), " · ".join(
+            f"Cam {int(k) + 1}: {d[k]:.0f} mm" for k in sorted(d)))
+        self.on_event({"type": "dart", "x": p[0], "y": p[1], "score": s, "spread": spread, "agree": agree, "n": len(results),
                        "cams": {k: list(v) for k, v in results.items()}})

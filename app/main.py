@@ -1,4 +1,5 @@
-import asyncio, json, math, os, random
+import asyncio
+import time, json, math, os, random
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import Response, StreamingResponse, FileResponse
@@ -326,8 +327,12 @@ def on_detector_event(ev):
 
 async def _on_ev(ev, source="cam"):
     if ev["type"] == "dart":
-        if ev.get("spread", 0) > CAL_WARN_MM:
-            await broadcast({"type": "warn", "msg": f"Kameras weichen {ev['spread']:.0f} mm ab – Kalibrierung prüfen"})
+        # Nur warnen, wenn sich die Kameras wiederholt nicht einig sind (eine abweichende Cam ist normal: verdeckt/schräg)
+        bad = ev.get("n", 0) >= 2 and ev.get("agree", 0) < 2 and ev.get("spread", 0) > CAL_WARN_MM
+        S["calhist"] = (S.get("calhist", []) + [bad])[-6:]
+        if bad and sum(S["calhist"]) >= 3 and time.time() - S.get("calwarn_t", 0) > 120:
+            S["calwarn_t"] = time.time()
+            await broadcast({"type": "warn", "msg": "Kameras oft uneinig – Kalibrierung prüfen"})
             b = base_state()
             await wled.update((b[0], with_color(b[1])), "cal_warn", {})
         await handle_dart(ev["score"], [ev["x"], ev["y"]], source)
