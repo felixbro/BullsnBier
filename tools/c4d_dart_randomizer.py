@@ -25,6 +25,10 @@ P_LOOSE = 0.04                # Anteil „abgeprallt“: liegt schräg am Rand, 
 P_HAND = 0.12                 # Anteil Frames mit Hand im Bild
 CAM_POS_JIT, CAM_ROT_JIT = 0.3, 0.6   # cm / ° Zufallsabweichung der Kameras
 JPG_Q = (70, 95)              # JPEG-Qualität zufällig
+# Echte Kamerafotos als Hintergrund (empfohlen): Ordner mit Unterordnern je Licht-Situation,
+# darin cam0.jpg, cam1.jpg, cam2.jpg (= Inhalt vom „Snapshot (ZIP)“ der App, leeres Board).
+# Das Board-Objekt (Name "Board", Scheibe bis inkl. Zahlenring, r ≥ 23 cm) wird dann unsichtbar und fängt nur Schatten.
+BG_DIR = r""                  # z. B. r"C:\Users\fb\Nextcloud\elberfeld\Projekte\BullsnBier\BnB_Hintergrund"
 # Abmessungen fürs Verdeckungs-Modell (cm): Barrel-/Schaft-Radius, Flight-Radius, Pfeillänge
 R_BARREL, R_FLIGHT, LEN, FLIGHT_LEN = 0.45, 1.8, 15.0, 3.8
 # Häufige Ziele (mm) – echte Würfe häufen sich hier; Rest gleichmäßig verteilt
@@ -165,6 +169,34 @@ def make_default_models(doc):
     return root
 
 
+def setup_background(doc):
+    """Hintergrund-Objekt mit Bitmap-Material + Compositing-Tag am Board. Rückgabe: Bitmap-Shader."""
+    bg = find(doc, "BnB_Hintergrund")
+    if not bg:
+        bg = c4d.BaseObject(c4d.Obackground); bg.SetName("BnB_Hintergrund"); doc.InsertObject(bg)
+    mat = doc.SearchMaterial("BnB_BG")
+    if not mat:
+        mat = c4d.BaseMaterial(c4d.Mmaterial); mat.SetName("BnB_BG"); doc.InsertMaterial(mat)
+        mat[c4d.MATERIAL_USE_COLOR] = False; mat[c4d.MATERIAL_USE_REFLECTION] = False; mat[c4d.MATERIAL_USE_LUMINANCE] = True
+        sh = c4d.BaseShader(c4d.Xbitmap); mat.InsertShader(sh); mat[c4d.MATERIAL_LUMINANCE_SHADER] = sh
+    if not bg.GetTag(c4d.Ttexture):
+        t = bg.MakeTag(c4d.Ttexture); t[c4d.TEXTURETAG_MATERIAL] = mat
+    board_obj = find(doc, "Board")
+    if board_obj:
+        ct = board_obj.GetTag(c4d.Tcompositing) or board_obj.MakeTag(c4d.Tcompositing)
+        ct[c4d.COMPOSITINGTAG_BACKGROUND] = True   # zeigt das Foto, empfängt Schatten
+    else:
+        print("Hinweis: kein Objekt 'Board' – Pfeile werfen keine Schatten aufs Foto.")
+    return mat[c4d.MATERIAL_LUMINANCE_SHADER]
+
+
+def bg_sets():
+    if not BG_DIR or not os.path.isdir(BG_DIR): return []
+    sets = [os.path.join(BG_DIR, d) for d in sorted(os.listdir(BG_DIR)) if os.path.isdir(os.path.join(BG_DIR, d))]
+    if os.path.exists(os.path.join(BG_DIR, "cam0.jpg")): sets.append(BG_DIR)
+    return [d for d in sets if os.path.exists(os.path.join(d, "cam0.jpg"))]
+
+
 def project(cam, p, W, H):
     """Weltpunkt → Pixel (u, v), Tiefe z."""
     m = cam.GetMg(); off, v1, v2, v3 = T(m.off), norm(T(m.v1)), norm(T(m.v2)), norm(T(m.v3))
@@ -202,6 +234,8 @@ def main():
     inst = holder.GetChildren()[:3]
 
     rd = doc.GetActiveRenderData(); W, H = int(rd[c4d.RDATA_XRES]), int(rd[c4d.RDATA_YRES])
+    bgs = bg_sets(); bg_shader = setup_background(doc) if bgs else None
+    if BG_DIR and not bgs: print("Hinweis: BG_DIR ohne cam0.jpg … – rendere ohne Foto-Hintergrund.")
     bd = doc.GetActiveBaseDraw(); cam_before = bd.GetSceneCamera(doc)
     start = START
     if start == "auto":
@@ -286,15 +320,19 @@ def main():
             # Rendern
             fdir = os.path.join(OUT, "%06d" % fr)
             if not os.path.isdir(fdir): os.makedirs(fdir)
+            bg_set = rng.choice(bgs) if bgs else None
             for ci, c in enumerate(cams):
                 bd.SetSceneCamera(c)
+                if bg_shader:   # Foto der passenden Kamera hinter die Szene
+                    bg_shader[c4d.BITMAPSHADER_FILENAME] = os.path.join(bg_set, "cam%d.jpg" % ci)
+                    doc.ExecutePasses(None, True, True, True, c4d.BUILDFLAGS_NONE)
                 bmp = c4d.bitmaps.BaseBitmap(); bmp.Init(W, H, 24)
                 if c4d.documents.RenderDocument(doc, rd.GetData(), bmp, c4d.RENDERFLAGS_EXTERNAL) != c4d.RENDERRESULT_OK:
                     raise RuntimeError("Rendern fehlgeschlagen (Frame %d, %s)" % (fr, c.GetName()))
                 bc = c4d.BaseContainer(); bc[c4d.JPGSAVER_QUALITY] = rng.randint(*JPG_Q)
                 bmp.Save(os.path.join(fdir, "cam%d.jpg" % (ci + 1)), c4d.FILTER_JPG, bc)
             with open(os.path.join(fdir, "labels.json"), "w") as fh:
-                json.dump({"frame": fr, "res": [W, H], "hand": show_hand, "darts": len(darts), "cams": labels}, fh, indent=1)
+                json.dump({"frame": fr, "res": [W, H], "hand": show_hand, "bg": os.path.basename(bg_set) if bg_set else None, "darts": len(darts), "cams": labels}, fh, indent=1)
             c4d.StatusSetBar(100.0 * (n + 1) / COUNT); el = time.time() - t0; eta = el / (n + 1) * (COUNT - n - 1)
             c4d.StatusSetText("BnB: Frame %d (%d/%d) · %.1f s/Frame · noch ca. %d min" % (fr, n + 1, COUNT, el / (n + 1), eta / 60))
             if n < 3 or n % 50 == 0: print("Frame %d: %.1f s/Frame, Rest ca. %.0f min" % (fr, el / (n + 1), eta / 60))
