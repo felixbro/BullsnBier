@@ -11,3 +11,4 @@ data-docker/
 build/
 dist/
 *.spec
+tipdata/

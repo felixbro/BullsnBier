@@ -30,7 +30,7 @@ JPG_Q = (70, 95)              # JPEG-Qualität zufällig
 # Das Board-Objekt (Name "Board", Scheibe bis inkl. Zahlenring, r ≥ 23 cm) wird dann unsichtbar und fängt nur Schatten.
 BG_DIR = r""                  # z. B. r"C:\Users\fb\Nextcloud\elberfeld\Projekte\BullsnBier\BnB_Hintergrund"
 # ── Andere Aufbauten simulieren (wichtig, damit das Netz nicht nur DEIN Setup kann) ──
-P_RIG = 0.3                   # Anteil Frames mit deinen echten Kamerapositionen (BnB_Rig), Rest = Zufallskameras
+P_RIG = 1.0                   # Anteil Frames mit deinen echten Kamerapositionen (BnB_Rig); <1 = zusätzlich Zufallskameras
 CAM_RADIUS = (24.0, 42.0)     # cm Abstand Kamera ↔ Board-Mitte (in der Board-Ebene gemessen)
 CAM_HEIGHT = (15.0, 34.0)     # cm Höhe vor dem Board
 CAM_FOV = (65.0, 105.0)       # ° horizontaler Bildwinkel
