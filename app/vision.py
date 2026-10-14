@@ -1,5 +1,6 @@
 """Kamera-Erfassung + Pfeilerkennung (Differenzbild, Spitze, Homographie, Fusion)."""
 import json, math, os, sys, threading, time
+os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")   # keine Warnungs-Flut bei fehlender Kamera (Status steht in der App)
 import cv2
 import numpy as np
 
