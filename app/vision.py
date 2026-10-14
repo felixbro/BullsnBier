@@ -219,8 +219,10 @@ def open_capture(src):
             cap.set(cv2.CAP_PROP_FOURCC, mjpg)
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
-            cap.set(cv2.CAP_PROP_FOURCC, mjpg)
-            if fourcc_str(cap) == "MJPG" or api == apis[-1]:
+            if api == cv2.CAP_DSHOW:
+                cap.set(cv2.CAP_PROP_FOURCC, mjpg)   # DirectShow: FOURCC nach der Auflösung nochmal
+            # MSMF: Reihenfolge FOURCC → Breite → Höhe, danach nichts mehr setzen (sonst 640x480 YUY2)
+            if api == cv2.CAP_MSMF or fourcc_str(cap) == "MJPG" or api == apis[-1]:
                 if last is not None:
                     last.release()
                 return cap
@@ -452,6 +454,7 @@ class Detector(threading.Thread):
     def run(self):
         for c in self.cams:
             c.open()
+            time.sleep(0.3)   # nacheinander öffnen wie im Test – USB-Bandbreite wird sauber ausgehandelt
         t0, n = time.time(), 0
         while True:
             frames = {}
