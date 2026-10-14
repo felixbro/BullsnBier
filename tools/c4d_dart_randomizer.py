@@ -14,8 +14,8 @@
 import c4d, json, math, os, random, time
 
 # ───────────────────────── Einstellungen ─────────────────────────
-OUT = r"C:\BnB_Render"        # Zielordner
-START, COUNT = 0, 2000        # Frame-Nummern START … START+COUNT-1 (für Batches: START weiterzählen)
+OUT = r"C:\Users\fb\Nextcloud\elberfeld\Projekte\BullsnBier\BnB_Render"   # Zielordner
+START, COUNT = "auto", 5000   # "auto" = hinter dem letzten vorhandenen Frame weitermachen
 PREVIEW = False               # True = nur Frame START in der Szene aufbauen, nichts rendern (zum Prüfen)
 DEPTH = 0.6                   # cm: so tief steckt die Spitze im Board (Ursprung des Modells liegt im Board)
 TILT_MAX = 25.0               # ° Neigung aus der Senkrechten
@@ -203,7 +203,12 @@ def main():
 
     rd = doc.GetActiveRenderData(); W, H = int(rd[c4d.RDATA_XRES]), int(rd[c4d.RDATA_YRES])
     bd = doc.GetActiveBaseDraw(); cam_before = bd.GetSceneCamera(doc)
-    frames = [START] if PREVIEW else range(START, START + COUNT)
+    start = START
+    if start == "auto":
+        done = [int(d) for d in os.listdir(OUT) if d.isdigit() and os.path.exists(os.path.join(OUT, d, "labels.json"))] if os.path.isdir(OUT) else []
+        start = max(done) + 1 if done else 0
+        print("Starte bei Frame %d" % start)
+    frames = [start] if PREVIEW else range(start, start + COUNT)
     if not PREVIEW and not os.path.isdir(OUT): os.makedirs(OUT)
 
     t0 = time.time()
@@ -295,7 +300,7 @@ def main():
             if n < 3 or n % 50 == 0: print("Frame %d: %.1f s/Frame, Rest ca. %.0f min" % (fr, el / (n + 1), eta / 60))
             st = c4d.BaseContainer()
             if c4d.gui.GetInputState(c4d.BFM_INPUT_KEYBOARD, c4d.KEY_ESC, st) and st[c4d.BFM_INPUT_VALUE]:
-                print("Abgebrochen bei Frame %d – weiter mit START = %d" % (fr, fr + 1)); break
+                print("Abgebrochen bei Frame %d – neu starten, START=\"auto\" macht automatisch weiter" % fr); break
     finally:
         if not PREVIEW:   # Szene zurücksetzen
             for c in cams: c.SetMg(base[c.GetName()])
