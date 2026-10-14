@@ -78,39 +78,70 @@ def overlay_points(Hm, n=72):
     return {"rings": rings, "wires": wires}
 
 
-def find_tip(diff_mask, Hm):
-    """Größte Kontur = Pfeil. Spitze = schmaleres Ende der Hauptachse."""
-    cnts, _ = cv2.findContours(diff_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if not cnts:
+def ransac_line(pts, iters=250, band=2.5, rng=None):
+    """Längste gerade Struktur im Pixelhaufen (Schaft + Barrel), Flights/Schatten zählen nicht mit.
+    Rückgabe (x0, y0, vx, vy, inlier) oder None."""
+    if len(pts) < 20:
         return None
-    c = max(cnts, key=cv2.contourArea)
-    area = cv2.contourArea(c)
+    rng = rng or np.random.default_rng(0)
+    best, best_n = None, 0
+    for _ in range(iters):
+        i, j = rng.integers(0, len(pts), 2)
+        d = pts[j] - pts[i]
+        L = math.hypot(d[0], d[1])
+        if L < 15:
+            continue
+        n = np.array([-d[1], d[0]]) / L
+        inl = np.abs((pts - pts[i]) @ n) < band
+        c = int(inl.sum())
+        if c > best_n:
+            best_n, best = c, inl
+    if best is None or best_n < 15:
+        return None
+    vx, vy, x0, y0 = cv2.fitLine(pts[best], cv2.DIST_HUBER, 0, 0.01, 0.01).flatten()
+    return float(x0), float(y0), float(vx), float(vy), best
+
+
+def find_tip(diff_mask, Hm):
+    """Pfeil = größte zusammenhängende Änderung. Achse per RANSAC (gerader Schaft), Spitze = schmaleres Ende."""
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(diff_mask, 8)
+    if n < 2:
+        return None
+    big = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    area = int(stats[big, cv2.CC_STAT_AREA])
     if area < DART_MIN:
         return None
-    pts = c.reshape(-1, 2).astype(np.float32)
-    vx, vy, x0, y0 = cv2.fitLine(pts, cv2.DIST_HUBER, 0, 0.01, 0.01).flatten()
+    # benachbarte Teile (Flight/Barrel getrennt) mitnehmen: alles in der erweiterten Box der größten Fläche
+    x, y, w, h = (int(v) for v in stats[big, :4])
+    pad = max(w, h) // 2
+    roi = (slice(max(0, y - pad), y + h + pad), slice(max(0, x - pad), x + w + pad))
+    ys, xs = np.nonzero(diff_mask[roi])
+    pts = np.column_stack([xs + roi[1].start, ys + roi[0].start]).astype(np.float32)
+    if len(pts) > 6000:
+        pts = pts[np.random.default_rng(1).choice(len(pts), 6000, replace=False)]
+    r = ransac_line(pts)
+    if r is None:
+        return None
+    x0, y0, vx, vy, inl = r
     d = np.array([vx, vy])
+    proj_in = (pts[inl] - [x0, y0]) @ d
+    lo, hi = float(proj_in.min()), float(proj_in.max())
+    # Breite an beiden Enden über alle Pixel (Flight = breit, Spitze = schmal)
     proj = (pts - [x0, y0]) @ d
     perp = np.abs((pts - [x0, y0]) @ np.array([-vy, vx]))
-    lo, hi = proj.min(), proj.max()
-    span = max(hi - lo, 1)
-    band = span * 0.15
-    w_lo = perp[proj < lo + band].mean() if (proj < lo + band).any() else 1e9
-    w_hi = perp[proj > hi - band].mean() if (proj > hi - band).any() else 1e9
-    end = lo if w_lo < w_hi else hi
-    sel = pts[np.abs(proj - end) < 3]
-    tip = sel.mean(axis=0) if len(sel) else (np.array([x0, y0]) + d * end)
-    tip = (float(tip[0]), float(tip[1]))
-    # Plausibilität: falls schmales Ende außerhalb, anderes Ende testen
-    if Hm is not None:
+    band = max((hi - lo) * 0.2, 4)
+    near = perp < 40
+    w_lo = perp[near & (proj < lo + band)].mean() if (near & (proj < lo + band)).any() else 1e9
+    w_hi = perp[near & (proj > hi - band)].mean() if (near & (proj > hi - band)).any() else 1e9
+    end, other = (lo, hi) if w_lo < w_hi else (hi, lo)
+    tip = np.array([x0, y0]) + d * end
+    if Hm is not None:   # schmales Ende außerhalb vom Board? dann das andere
         bx, by = to_board(Hm, tip)
-        if math.hypot(bx, by) > 230:
-            other = hi if end == lo else lo
-            alt = np.array([x0, y0]) + d * other
-            ax, ay = to_board(Hm, alt)
-            if math.hypot(ax, ay) < math.hypot(bx, by):
-                tip = (float(alt[0]), float(alt[1]))
-    return {"tip": tip, "area": float(area), "line": (float(x0), float(y0), float(vx), float(vy))}
+        alt = np.array([x0, y0]) + d * other
+        if math.hypot(bx, by) > 230 and math.hypot(*to_board(Hm, alt)) < math.hypot(bx, by):
+            tip = alt
+    return {"tip": (float(tip[0]), float(tip[1])), "area": float(area), "line": (x0, y0, vx, vy),
+            "seg": ((float(x0 + vx * lo), float(y0 + vy * lo)), (float(x0 + vx * hi), float(y0 + vy * hi)))}
 
 
 def board_line(Hm, line):
@@ -298,8 +329,8 @@ def gray(f):
 def mask(a, b):
     d = cv2.absdiff(a, b)
     _, m = cv2.threshold(d, DIFF_THR, 255, cv2.THRESH_BINARY)
-    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    m = cv2.medianBlur(m, 3)   # Rauschen weg, dünne Spitze/Schaft bleiben (Opening 3×3 hat sie gelöscht)
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
     return m
 
 
@@ -400,6 +431,8 @@ class Detector(threading.Thread):
                 if r:
                     x0, y0, vx, vy = r["line"]
                     cv2.line(im, (int(x0 - vx * 400), int(y0 - vy * 400)), (int(x0 + vx * 400), int(y0 + vy * 400)), (255, 200, 0), 1)
+                    (a1, a2) = r["seg"]
+                    cv2.line(im, (int(a1[0]), int(a1[1])), (int(a2[0]), int(a2[1])), (255, 200, 0), 3)
                     cv2.circle(im, tuple(int(v) for v in r["tip"]), 6, (0, 255, 255), 2)
                 cv2.putText(im, f"Cam {int(k) + 1}", (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                 tiles.append(im)
