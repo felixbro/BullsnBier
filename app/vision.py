@@ -109,8 +109,27 @@ def ransac_line(pts, iters=250, band=2.5, rng=None):
     return float(x0), float(y0), float(vx), float(vy), best
 
 
-def find_tip(diff_mask, Hm):
-    """Pfeil = größte zusammenhängende Änderung. Achse per RANSAC (gerader Schaft), Spitze = schmaleres Ende."""
+def board_roi(Hm, shape, r_mm=235, up=0.45):
+    """Bildbereich, in dem ein Pfeil liegen kann: Board (r ≤ 235 mm) plus Streifen darüber für Barrel/Flight."""
+    h, w = shape[:2]
+    Hi = np.linalg.inv(Hm)
+    poly = []
+    for i in range(72):
+        a = 2 * math.pi * i / 72
+        v = Hi @ np.array([r_mm * math.sin(a), r_mm * math.cos(a), 1.0])
+        poly.append([v[0] / v[2], v[1] / v[2]])
+    m = np.zeros((h, w), np.uint8)
+    cv2.fillPoly(m, [np.int32(poly)], 255)
+    band = max(3, int(h * up))
+    # nach oben ausdehnen: Pixel gilt, wenn darunter (innerhalb band) Board liegt
+    return cv2.dilate(m, np.ones((band, 1), np.uint8), anchor=(0, 0))
+
+
+def find_tip(diff_mask, Hm, roi=None):
+    """Pfeil finden: Teile im Board-Bereich, Achse per RANSAC (gerader Schaft),
+    Spitze = unteres Ende der Achse (Kameras schauen flach aufs Board, der Pfeil ragt im Bild nach oben)."""
+    if roi is not None:
+        diff_mask = cv2.bitwise_and(diff_mask, roi)
     n, lab, stats, _ = cv2.connectedComponentsWithStats(diff_mask, 8)
     if n < 2:
         return None
@@ -118,12 +137,12 @@ def find_tip(diff_mask, Hm):
     area = int(stats[big, cv2.CC_STAT_AREA])
     if area < DART_MIN:
         return None
-    # benachbarte Teile (Flight/Barrel getrennt) mitnehmen: alles in der erweiterten Box der größten Fläche
+    # benachbarte Teile (Flight/Barrel getrennt) mitnehmen: erweiterte Box der größten Fläche
     x, y, w, h = (int(v) for v in stats[big, :4])
     pad = max(w, h) // 2
-    roi = (slice(max(0, y - pad), y + h + pad), slice(max(0, x - pad), x + w + pad))
-    ys, xs = np.nonzero(diff_mask[roi])
-    pts = np.column_stack([xs + roi[1].start, ys + roi[0].start]).astype(np.float32)
+    box = (slice(max(0, y - pad), y + h + pad), slice(max(0, x - pad), x + w + pad))
+    ys, xs = np.nonzero(diff_mask[box])
+    pts = np.column_stack([xs + box[1].start, ys + box[0].start]).astype(np.float32)
     if len(pts) > 6000:
         pts = pts[np.random.default_rng(1).choice(len(pts), 6000, replace=False)]
     r = ransac_line(pts)
@@ -133,22 +152,15 @@ def find_tip(diff_mask, Hm):
     d = np.array([vx, vy])
     proj_in = (pts[inl] - [x0, y0]) @ d
     lo, hi = float(proj_in.min()), float(proj_in.max())
-    # Breite an beiden Enden über alle Pixel (Flight = breit, Spitze = schmal)
-    proj = (pts - [x0, y0]) @ d
-    perp = np.abs((pts - [x0, y0]) @ np.array([-vy, vx]))
-    band = max((hi - lo) * 0.2, 4)
-    near = perp < 40
-    w_lo = perp[near & (proj < lo + band)].mean() if (near & (proj < lo + band)).any() else 1e9
-    w_hi = perp[near & (proj > hi - band)].mean() if (near & (proj > hi - band)).any() else 1e9
-    end, other = (lo, hi) if w_lo < w_hi else (hi, lo)
-    tip = np.array([x0, y0]) + d * end
-    if Hm is not None:   # schmales Ende außerhalb vom Board? dann das andere
-        bx, by = to_board(Hm, tip)
-        alt = np.array([x0, y0]) + d * other
-        if math.hypot(bx, by) > 230 and math.hypot(*to_board(Hm, alt)) < math.hypot(bx, by):
-            tip = alt
+    # Form-Check: Pfeil = lang und gerade. Flecken (Schatten, Belichtung, Hand) fliegen raus.
+    if hi - lo < 25 or inl.sum() < 0.2 * len(pts):
+        return None
+    a_lo, a_hi = np.array([x0, y0]) + d * lo, np.array([x0, y0]) + d * hi
+    tip = a_lo if a_lo[1] > a_hi[1] else a_hi          # unteres Ende im Bild = Spitze im Board
+    if Hm is not None and math.hypot(*to_board(Hm, tip)) > 235:
+        return None                                      # Spitze nicht auf dem Board → kein Pfeil
     return {"tip": (float(tip[0]), float(tip[1])), "area": float(area), "line": (x0, y0, vx, vy),
-            "seg": ((float(x0 + vx * lo), float(y0 + vy * lo)), (float(x0 + vx * hi), float(y0 + vy * hi)))}
+            "seg": ((float(a_lo[0]), float(a_lo[1])), (float(a_hi[0]), float(a_hi[1])))}
 
 
 def board_line(Hm, line):
@@ -359,6 +371,10 @@ class Camera:
         if self.cap is not None:
             self.cap.release()
         self.cap = open_capture(self.src)   # MJPG + Auflösung werden dort gesetzt
+        exp = os.environ.get("CAM_EXPOSURE", "").strip()
+        if exp:   # Belichtung fest: verhindert Helligkeitssprünge (Hand/Pfeil im Bild → ganzes Bild „ändert“ sich)
+            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25 if sys.platform.startswith("win") else 1)
+            self.cap.set(cv2.CAP_PROP_EXPOSURE, float(exp))
         if not sys.platform.startswith("win"):
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.ok = self.cap.isOpened()
@@ -422,13 +438,14 @@ class Detector(threading.Thread):
         self.fps = 0.0
 
     def reload_cal(self):
-        self.H = {}
+        self.H, self.roi = {}, {}
         for c in self.cams:
             pts = self.points(c.id)
             if pts:
                 Hm = homography(pts)
                 if Hm is not None:
                     self.H[c.id] = Hm
+                    self.roi[c.id] = board_roi(Hm, (H, W))
 
     def points(self, cid):
         """Kalibrierpunkte in aktueller Auflösung (gespeichert mit _res → bei Wechsel mitskalieren)."""
@@ -532,7 +549,7 @@ class Detector(threading.Thread):
             m = mask(g, self.ref.get(k, g))
             areas[k] = int(cv2.countNonZero(m))
             if DART_MIN <= areas[k] <= DART_MAX:
-                r = find_tip(m, self.H.get(k))
+                r = find_tip(m, self.H.get(k), self.roi.get(k) if k in self.roi and self.roi[k].shape == g.shape else None)
                 dbg[k] = (g, m, r)
                 if r and k in self.H:
                     bx, by = to_board(self.H[k], r["tip"])
@@ -559,7 +576,7 @@ class Detector(threading.Thread):
         if len(lines) >= 2:
             r = intersect(lines)
             # Schnittpunkt nur nehmen, wenn er zu mindestens einer Spitzen-Schätzung passt (Schutz vor Fehlformen)
-            if r and math.hypot(*r[0]) < 260 and (not results or min(math.hypot(v[0] - r[0][0], v[1] - r[0][1]) for v in results.values()) < 60):
+            if r and math.hypot(*r[0]) < 260 and (not results or min(math.hypot(v[0] - r[0][0], v[1] - r[0][1]) for v in results.values()) < 25):
                 p, d, how = r[0], r[1], "Achsen"
         if p is None:
             p = fuse(list(results.values()))
