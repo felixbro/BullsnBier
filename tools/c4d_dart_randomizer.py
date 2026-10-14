@@ -11,7 +11,7 @@
 # Board: Mitte = Ursprung, Fläche in XY, schaut nach -Z, 20 oben. Einheiten cm.
 #
 # Ausgabe: OUT/000123/cam1.jpg, cam2.jpg, cam3.jpg, labels.json
-import c4d, json, math, os, random
+import c4d, json, math, os, random, time
 
 # ───────────────────────── Einstellungen ─────────────────────────
 OUT = r"C:\BnB_Render"        # Zielordner
@@ -206,6 +206,7 @@ def main():
     frames = [START] if PREVIEW else range(START, START + COUNT)
     if not PREVIEW and not os.path.isdir(OUT): os.makedirs(OUT)
 
+    t0 = time.time()
     try:
         for n, fr in enumerate(frames):
             rng = random.Random(fr * 7919 + 13)
@@ -289,7 +290,9 @@ def main():
                 bmp.Save(os.path.join(fdir, "cam%d.jpg" % (ci + 1)), c4d.FILTER_JPG, bc)
             with open(os.path.join(fdir, "labels.json"), "w") as fh:
                 json.dump({"frame": fr, "res": [W, H], "hand": show_hand, "darts": len(darts), "cams": labels}, fh, indent=1)
-            c4d.StatusSetBar(100.0 * (n + 1) / COUNT); c4d.StatusSetText("BnB: Frame %d (%d/%d)" % (fr, n + 1, COUNT))
+            c4d.StatusSetBar(100.0 * (n + 1) / COUNT); el = time.time() - t0; eta = el / (n + 1) * (COUNT - n - 1)
+            c4d.StatusSetText("BnB: Frame %d (%d/%d) · %.1f s/Frame · noch ca. %d min" % (fr, n + 1, COUNT, el / (n + 1), eta / 60))
+            if n < 3 or n % 50 == 0: print("Frame %d: %.1f s/Frame, Rest ca. %.0f min" % (fr, el / (n + 1), eta / 60))
             st = c4d.BaseContainer()
             if c4d.gui.GetInputState(c4d.BFM_INPUT_KEYBOARD, c4d.KEY_ESC, st) and st[c4d.BFM_INPUT_VALUE]:
                 print("Abgebrochen bei Frame %d – weiter mit START = %d" % (fr, fr + 1)); break
