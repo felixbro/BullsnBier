@@ -18,6 +18,7 @@ p.add_argument("--host", default=None, help="Bind-Adresse (Standard 0.0.0.0)")
 p.add_argument("--port", type=int, default=None, help="Port (Standard 8090)")
 p.add_argument("--cameras", default=None, help="Kommagetrennt, z. B. /dev/video0,/dev/video2,/dev/video4")
 p.add_argument("--list-cameras", action="store_true", help="Angeschlossene Kameras auflisten und beenden")
+p.add_argument("--test-cameras", action="store_true", help="Alle Kameras aus config.env gleichzeitig testen (Bilder/s)")
 p.add_argument("--get-voice", nargs="*", metavar="STIMME", help="Piper-Stimme(n) laden, Standard: de_DE-thorsten-high en_GB-alan-medium")
 p.add_argument("--data", default=None, help="Datenordner (Standard ./data)")
 p.add_argument("--open", action="store_true", help="Browser nach dem Start öffnen")
@@ -41,6 +42,14 @@ if a.get_voice is not None:
             print("  ok")
         except Exception as ex:
             print(f"  Fehler: {ex}")
+    raise SystemExit(0)
+
+if a.test_cameras:
+    from app.vision import test_cameras
+    print(f"\nTeste {', '.join(config.CAMERAS)} gleichzeitig …")
+    for c in test_cameras(config.CAMERAS):
+        st = "OK " if c["open"] and c["fps"] > 5 else "FEHLER"
+        print(f"  {st} Kamera {c['src']}: {c['fps']} Bilder/s · {c['w']}x{c['h']} {c['fmt']}")
     raise SystemExit(0)
 
 if a.list_cameras:

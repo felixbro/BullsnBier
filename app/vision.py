@@ -124,9 +124,17 @@ def open_capture(src):
     """Plattformgerecht öffnen: Windows = DirectShow (Index 0,1,2 …), Linux = V4L2 (/dev/videoX)."""
     s = str(src).strip()
     if sys.platform.startswith("win") and s.isdigit():
-        cap = cv2.VideoCapture(int(s), cv2.CAP_DSHOW)
-        if not cap.isOpened():
-            cap = cv2.VideoCapture(int(s), cv2.CAP_MSMF)
+        # MJPG + Auflösung schon beim Öffnen setzen: sonst startet DirectShow im unkomprimierten Format,
+        # und bei 3 Kameras an einem USB-Controller reicht die Bandbreite für die dritte nicht.
+        params = [cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"), cv2.CAP_PROP_FRAME_WIDTH, W, cv2.CAP_PROP_FRAME_HEIGHT, H]
+        for api in (cv2.CAP_DSHOW, cv2.CAP_MSMF):
+            try:
+                cap = cv2.VideoCapture(int(s), api, params)
+            except Exception:
+                cap = cv2.VideoCapture(int(s), api)
+            if cap.isOpened():
+                return cap
+            cap.release()
         return cap
     if sys.platform.startswith("win"):
         return cv2.VideoCapture(s)  # RTSP/HTTP-Stream oder Videodatei
@@ -135,6 +143,31 @@ def open_capture(src):
     if s.startswith("/dev/"):
         return cv2.VideoCapture(s, cv2.CAP_V4L2)
     return cv2.VideoCapture(s)  # z. B. RTSP/HTTP-Stream oder Videodatei
+
+
+def test_cameras(srcs, seconds=4):
+    """Alle Kameras GLEICHZEITIG öffnen und Bilder zählen – zeigt USB-Bandbreiten-Probleme."""
+    cams = []
+    for s in srcs:
+        cap = open_capture(s)
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
+        cams.append([s, cap, 0])
+        time.sleep(0.3)
+    t0 = time.time()
+    while time.time() - t0 < seconds:
+        for c in cams:
+            if c[1].isOpened() and c[1].read()[0]:
+                c[2] += 1
+    out = []
+    for s, cap, n in cams:
+        fourcc = int(cap.get(cv2.CAP_PROP_FOURCC)) if cap.isOpened() else 0
+        out.append({"src": s, "open": cap.isOpened(), "fps": round(n / seconds, 1),
+                    "w": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), "h": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                    "fmt": "".join(chr((fourcc >> 8 * i) & 0xFF) for i in range(4)) if fourcc else "-"})
+        cap.release()
+    return out
 
 
 def list_cameras(max_idx=10):
