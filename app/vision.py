@@ -17,6 +17,8 @@ DART_MIN = int(os.environ.get("DART_MIN", 250))          # min. Fläche eines Pf
 DART_MAX = int(os.environ.get("DART_MAX", 40000))        # darüber = Hand/Takeout
 DIFF_THR = int(os.environ.get("DIFF_THR", 28))
 log = logging.getLogger("uvicorn.error")
+DEBUG_DIR = os.path.join(DATA, "debug")              # letzte Würfe als Bild (Maske, Achse, Spitze) zum Prüfen
+DEBUG_KEEP = int(os.environ.get("DEBUG_SHOTS", 12))
 TAKEOUT_PX = int(os.environ.get("TAKEOUT_PX", 0)) or DART_MIN * 3   # Restabweichung zum leeren Board
 FUSE_MM = float(os.environ.get("FUSE_MM", 12))           # Ausreißer-Grenze zwischen Kameras
 
@@ -86,7 +88,7 @@ def find_tip(diff_mask, Hm):
     if area < DART_MIN:
         return None
     pts = c.reshape(-1, 2).astype(np.float32)
-    vx, vy, x0, y0 = cv2.fitLine(pts, cv2.DIST_L2, 0, 0.01, 0.01).flatten()
+    vx, vy, x0, y0 = cv2.fitLine(pts, cv2.DIST_HUBER, 0, 0.01, 0.01).flatten()
     d = np.array([vx, vy])
     proj = (pts - [x0, y0]) @ d
     perp = np.abs((pts - [x0, y0]) @ np.array([-vy, vx]))
@@ -108,7 +110,42 @@ def find_tip(diff_mask, Hm):
             ax, ay = to_board(Hm, alt)
             if math.hypot(ax, ay) < math.hypot(bx, by):
                 tip = (float(alt[0]), float(alt[1]))
-    return {"tip": tip, "area": float(area)}
+    return {"tip": tip, "area": float(area), "line": (float(x0), float(y0), float(vx), float(vy))}
+
+
+def board_line(Hm, line):
+    """Pfeilachse aus dem Kamerabild auf die Board-Ebene projizieren → (Punkt, Einheitsrichtung) in mm.
+    Die Spitze steckt in der Ebene, also liegt sie auf dieser Linie – egal welches Ende im Bild die Spitze ist."""
+    x0, y0, vx, vy = line
+    a = np.array(to_board(Hm, (x0, y0)))
+    b = np.array(to_board(Hm, (x0 + vx * 40, y0 + vy * 40)))
+    d = b - a
+    n = np.linalg.norm(d)
+    return (a, d / n) if n > 1e-6 else None
+
+
+def intersect(lines):
+    """Kleinste-Quadrate-Schnittpunkt mehrerer Linien; schlechteste Linie verwerfen, wenn sie nicht passt.
+    Rückgabe (Punkt, {key: Abstand mm}) oder None (zu flacher Winkel)."""
+    lines = dict(lines)
+    while len(lines) >= 2:
+        A, B = np.zeros((2, 2)), np.zeros(2)
+        for p, d in lines.values():
+            nrm = np.array([-d[1], d[0]])
+            M = np.outer(nrm, nrm)
+            A += M
+            B += M @ p
+        ev = np.linalg.eigvalsh(A)
+        if ev[0] < 0.04 * len(lines):   # Linien fast parallel (< ~12°)
+            return None
+        X = np.linalg.solve(A, B)
+        res = {k: abs(float(np.array([-d[1], d[0]]) @ (X - p))) for k, (p, d) in lines.items()}
+        worst = max(res, key=res.get)
+        if res[worst] > FUSE_MM and len(lines) >= 3:
+            del lines[worst]
+            continue
+        return (float(X[0]), float(X[1])), res
+    return None
 
 
 def fuse(points):
@@ -346,17 +383,51 @@ class Detector(threading.Thread):
             self.state = "idle"
             self.evaluate(frames)
 
+    def debug_shot(self, dbg, name):
+        if DEBUG_KEEP <= 0 or not dbg:
+            return
+        try:
+            os.makedirs(DEBUG_DIR, exist_ok=True)
+            tiles = []
+            for k in sorted(dbg):
+                g, m, r = dbg[k]
+                im = cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
+                im[m > 0] = (0.5 * im[m > 0] + [0, 0, 120]).astype(np.uint8)          # Maske rot
+                if k in self.H:
+                    ov = overlay_points(self.H[k])
+                    for ring in ov["rings"]:
+                        cv2.polylines(im, [np.int32(ring)], False, (106, 249, 221), 1)
+                if r:
+                    x0, y0, vx, vy = r["line"]
+                    cv2.line(im, (int(x0 - vx * 400), int(y0 - vy * 400)), (int(x0 + vx * 400), int(y0 + vy * 400)), (255, 200, 0), 1)
+                    cv2.circle(im, tuple(int(v) for v in r["tip"]), 6, (0, 255, 255), 2)
+                cv2.putText(im, f"Cam {int(k) + 1}", (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                tiles.append(im)
+            h = min(t.shape[0] for t in tiles)
+            tiles = [cv2.resize(t, (int(t.shape[1] * h / t.shape[0]), h)) for t in tiles]
+            fn = os.path.join(DEBUG_DIR, time.strftime("%H%M%S") + f"_{name}.jpg")
+            cv2.imwrite(fn, np.hstack(tiles), [cv2.IMWRITE_JPEG_QUALITY, 80])
+            old = sorted(os.listdir(DEBUG_DIR))[:-DEBUG_KEEP]
+            for f in old:
+                os.remove(os.path.join(DEBUG_DIR, f))
+        except Exception as e:
+            log.warning("Debug-Bild fehlgeschlagen: %s", e)
+
     def evaluate(self, frames):
-        areas, results = {}, {}
+        areas, results, lines, dbg = {}, {}, {}, {}
         for k, g in frames.items():
             m = mask(g, self.ref.get(k, g))
             areas[k] = int(cv2.countNonZero(m))
             if DART_MIN <= areas[k] <= DART_MAX:
                 r = find_tip(m, self.H.get(k))
+                dbg[k] = (g, m, r)
                 if r and k in self.H:
                     bx, by = to_board(self.H[k], r["tip"])
                     if math.hypot(bx, by) < 260:
                         results[k] = (bx, by)
+                    bl = board_line(self.H[k], r["line"])
+                    if bl:
+                        lines[k] = bl
         big = max(areas.values()) if areas else 0
         if big < DART_MIN:
             return  # Rauschen
@@ -371,15 +442,24 @@ class Detector(threading.Thread):
         self.ref = dict(frames)
         if big > DART_MAX:
             return  # Hand im Bild – abwarten
-        p = fuse(list(results.values()))
+        p, d, how = None, {}, "Spitze"
+        if len(lines) >= 2:
+            r = intersect(lines)
+            # Schnittpunkt nur nehmen, wenn er zu mindestens einer Spitzen-Schätzung passt (Schutz vor Fehlformen)
+            if r and math.hypot(*r[0]) < 260 and (not results or min(math.hypot(v[0] - r[0][0], v[1] - r[0][1]) for v in results.values()) < 60):
+                p, d, how = r[0], r[1], "Achsen"
+        if p is None:
+            p = fuse(list(results.values()))
+            if p is not None:
+                d = {k: math.hypot(v[0] - p[0], v[1] - p[1]) for k, v in results.items()}
         if p is None:
             self.on_event({"type": "dart_unknown", "areas": areas})
             return
         s = board.score(*p)
-        d = {k: math.hypot(v[0] - p[0], v[1] - p[1]) for k, v in results.items()}
         agree = sum(1 for v in d.values() if v <= FUSE_MM)
         spread = max(d.values(), default=0.0)
-        log.info("Dart %s · %s", s.get("name"), " · ".join(
+        self.debug_shot(dbg, s.get("name"))
+        log.info("Dart %s (%s) · %s", s.get("name"), how, " · ".join(
             f"Cam {int(k) + 1}: {d[k]:.0f} mm" for k in sorted(d)))
-        self.on_event({"type": "dart", "x": p[0], "y": p[1], "score": s, "spread": spread, "agree": agree, "n": len(results),
+        self.on_event({"type": "dart", "x": p[0], "y": p[1], "score": s, "spread": spread, "agree": agree, "n": len(d),
                        "cams": {k: list(v) for k, v in results.items()}})
