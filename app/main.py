@@ -623,6 +623,25 @@ def _cam(cid):
     raise HTTPException(404)
 
 
+@app.get("/api/cam/snapshot.zip")
+def api_cam_snapshot():
+    """Leeres Board von allen Kameras (ohne Raster, volle Auflösung) + Kalibrierung – z. B. für 3D-Szene/Training."""
+    import io, zipfile
+    from . import vision
+    if not detector:
+        raise HTTPException(400, "Keine Kameras")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for c in detector.cams:
+            z.writestr(f"cam{c.id}.jpg", c.jpeg(None))
+        info = {"res": [vision.W, vision.H], "backend": vision.BACKEND,
+                "cams": {c.id: {"src": c.src, "points": detector.points(c.id),
+                                "H": detector.H[c.id].tolist() if c.id in detector.H else None} for c in detector.cams}}
+        z.writestr("calibration.json", json.dumps(info, indent=1))
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": "attachment; filename=bullsnbier-snapshot.zip"})
+
+
 @app.get("/api/cam/{cid}.jpg")
 def api_cam_jpg(cid: str, overlay: int = 0):
     c = _cam(cid)
