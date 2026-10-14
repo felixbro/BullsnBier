@@ -15,6 +15,8 @@ _cw, _ch = os.environ.get("CAM_W", "auto").strip().lower(), os.environ.get("CAM_
 AUTO_RES = not (_cw.isdigit() and _ch.isdigit())        # CAM_W=auto (Standard) → beim ersten Start ausmessen
 W, H = (int(_cw), int(_ch)) if not AUTO_RES else (1280, 720)
 RES_STEPS = [(1920, 1080), (1600, 900), (1280, 720), (1024, 576), (960, 540), (848, 480), (640, 480)]
+BACKEND = os.environ.get("CAM_BACKEND", "").strip().lower()   # Windows: dshow | msmf | leer = automatisch
+BACKEND_FIXED = bool(BACKEND)
 PROBE_FPS = float(os.environ.get("PROBE_FPS", 20))      # so viele Bilder/s muss JEDE Kamera gleichzeitig schaffen
 MOTION_PX = int(os.environ.get("MOTION_PX", 400))       # Pixel-Änderung = Bewegung
 STABLE_FRAMES = int(os.environ.get("STABLE_FRAMES", 6))
@@ -207,8 +209,7 @@ def open_capture(src):
     if sys.platform.startswith("win") and s.isdigit():
         # Ziel: MJPG (komprimiert). Bleibt eine Kamera bei YUY2, reicht die USB-Bandbreite nicht für drei.
         # DirectShow übernimmt MJPG oft nur, wenn FOURCC vor UND nach der Auflösung gesetzt wird; sonst MSMF probieren.
-        want = os.environ.get("CAM_BACKEND", "").lower()
-        apis = {"dshow": [cv2.CAP_DSHOW], "msmf": [cv2.CAP_MSMF]}.get(want, [cv2.CAP_DSHOW, cv2.CAP_MSMF])
+        apis = {"dshow": [cv2.CAP_DSHOW], "msmf": [cv2.CAP_MSMF]}.get(BACKEND, [cv2.CAP_DSHOW, cv2.CAP_MSMF])
         last = None
         for api in apis:
             cap = cv2.VideoCapture(int(s), api)
@@ -229,10 +230,12 @@ def open_capture(src):
         return last if last is not None else cv2.VideoCapture(int(s), cv2.CAP_DSHOW)
     if sys.platform.startswith("win"):
         return cv2.VideoCapture(s)  # RTSP/HTTP-Stream oder Videodatei
-    if s.isdigit():
-        return cv2.VideoCapture(int(s), cv2.CAP_V4L2)
-    if s.startswith("/dev/"):
-        return cv2.VideoCapture(s, cv2.CAP_V4L2)
+    if s.isdigit() or s.startswith("/dev/"):
+        cap = cv2.VideoCapture(int(s) if s.isdigit() else s, cv2.CAP_V4L2)
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
+        return cap
     return cv2.VideoCapture(s)  # z. B. RTSP/HTTP-Stream oder Videodatei
 
 
@@ -242,43 +245,62 @@ def set_res(w, h):
 
 
 def probe_resolution(srcs, say=print):
-    """Von hoch nach niedrig testen, bis ALLE Kameras gleichzeitig flüssig laufen. Rückgabe (w, h)."""
-    tried = set()
+    """Von hoch nach niedrig testen, bis ALLE Kameras gleichzeitig flüssig laufen.
+    Windows: je Stufe DirectShow und Media Foundation. Rückgabe (w, h, backend)."""
+    global BACKEND
+    win = sys.platform.startswith("win") and all(str(x).strip().isdigit() for x in srcs)
+    backends = [BACKEND] if (BACKEND_FIXED or not win) else ["dshow", "msmf"]
     for w, h in RES_STEPS:
-        set_res(w, h)
-        r = test_cameras(srcs, seconds=3)
-        sizes = {(c["w"], c["h"]) for c in r}
-        ok = all(c["open"] and c["fps"] >= PROBE_FPS for c in r) and len(sizes) == 1
-        real = sizes.pop() if len(sizes) == 1 else (w, h)
-        say(f"  {w}x{h} → " + " · ".join(f"Cam {i + 1}: {c['fps']} fps {c['w']}x{c['h']} {c['fmt']}" for i, c in enumerate(r))
-            + ("  ✓" if ok else ""))
-        if ok and real[0] > 0:
-            return real
-        tried.add(real)
-    return RES_STEPS[-1]
+        for be in backends:
+            set_res(w, h)
+            BACKEND = be
+            r = test_cameras(srcs, seconds=3)
+            sizes = {(c["w"], c["h"]) for c in r}
+            ok = all(c["open"] and c["fps"] >= PROBE_FPS for c in r) and len(sizes) == 1
+            real = sizes.pop() if len(sizes) == 1 else (w, h)
+            say(f"  {w}x{h}{' ' + be if be else ''} → " + " · ".join(f"Cam {i + 1}: {c['fps']} fps {c['w']}x{c['h']} {c['fmt']}" for i, c in enumerate(r))
+                + ("  ✓" if ok else ""))
+            if ok and real[0] > 0:
+                return real[0], real[1], be
+    return RES_STEPS[-1][0], RES_STEPS[-1][1], BACKEND
+
+
+def _use_backend(be):
+    global BACKEND
+    if not BACKEND_FIXED:
+        BACKEND = be or ""
 
 
 def init_resolution(srcs, force=False, say=print):
     """Auflösung festlegen: config.env (feste Zahl) > gespeichertes Messergebnis > neu messen."""
-    if not AUTO_RES and not force:
-        return W, H
     key = ",".join(srcs)
+    if not AUTO_RES and not force:
+        try:
+            with open(RES_FILE) as f:
+                d = json.load(f)
+            if d.get("srcs") == key:
+                _use_backend(d.get("backend", ""))
+        except Exception:
+            pass
+        return W, H
     if not force:
         try:
             with open(RES_FILE) as f:
                 d = json.load(f)
             if d.get("srcs") == key:
                 set_res(d["w"], d["h"])
+                _use_backend(d.get("backend", ""))
                 return W, H
         except Exception:
             pass
     say("Kamera-Auflösung wird getestet (einmalig, ca. 10–30 s) …")
-    w, h = probe_resolution(srcs, say)
+    w, h, be = probe_resolution(srcs, say)
     set_res(w, h)
+    _use_backend(be)
     os.makedirs(DATA, exist_ok=True)
     with open(RES_FILE, "w") as f:
-        json.dump({"w": w, "h": h, "srcs": key}, f)
-    say(f"Auflösung gespeichert: {w}x{h}  (neu testen: python run.py --probe-res)")
+        json.dump({"w": w, "h": h, "backend": be, "srcs": key}, f)
+    say(f"Gespeichert: {w}x{h}{' über ' + be if be else ''}  (neu testen: python run.py --probe-res)")
     return w, h
 
 
@@ -286,10 +308,7 @@ def test_cameras(srcs, seconds=4):
     """Alle Kameras GLEICHZEITIG öffnen und Bilder zählen – zeigt USB-Bandbreiten-Probleme."""
     cams = []
     for s in srcs:
-        cap = open_capture(s)
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
+        cap = open_capture(s)   # setzt MJPG + Auflösung selbst (nochmal setzen kippt DirectShow auf YUY2)
         cams.append([s, cap, 0])
         time.sleep(0.3)
     t0 = time.time()
@@ -337,11 +356,9 @@ class Camera:
         self.last_try = time.time()
         if self.cap is not None:
             self.cap.release()
-        self.cap = open_capture(self.src)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.cap = open_capture(self.src)   # MJPG + Auflösung werden dort gesetzt
+        if not sys.platform.startswith("win"):
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.ok = self.cap.isOpened()
 
     def read(self):
