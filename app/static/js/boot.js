@@ -18,9 +18,10 @@ function renderHeader(m) {
   $('#simPill').classList.toggle('hidden', !m.sim);
   $('#badgePaused').classList.toggle('hidden', !d.paused);                       // C3
   // C2: Fehler bleiben stehen, bis behoben
-  var keys = (m.errors || []).map(function (e) { return 'err:' + e.msg; });
+  var errs = (m.errors || []).filter(function (e) { return !(PAGE === 'cams' && /kalibriert/.test(e.msg)); });   // Kamera-Seite zeigt das selbst
+  var keys = errs.map(function (e) { return 'err:' + e.msg; });
   $$('#toasts [data-key^="err:"]').forEach(function (t) { if (keys.indexOf(t.getAttribute('data-key')) < 0) t.remove(); });
-  (m.errors || []).forEach(function (e) { if (!$('#toasts [data-key="err:' + e.msg + '"]')) toast(e.msg.replace(/ \(.*\)/, ''), 'Kameras prüfen', 'warn', 'err:' + e.msg); });
+  errs.forEach(function (e) { if (!$('#toasts [data-key="err:' + e.msg + '"]')) toast(e.msg.replace(/ \(.*\)/, ''), 'Kameras prüfen', 'warn', 'err:' + e.msg); });
   var blob = $('#blobPlayer'), g = m.game;
   blob.style.background = g ? 'radial-gradient(closest-side, ' + pcolorOf(g.state.current) + '29, ' + pcolorOf(g.state.current) + '00)' : '';
 }
@@ -73,9 +74,11 @@ function connect() {
   ws.onmessage = function (e) { onMessage(JSON.parse(e.data)); };
   ws.onclose = function () { setTimeout(connect, 1500); };
 }
+var lastTouch = Date.now();   // Bedienung zählt auch als Aktivität
+['pointerdown', 'keydown'].forEach(function (ev) { addEventListener(ev, function () { lastTouch = Date.now(); }, true); });
 /* C4 Leerlauf: nach 5 min ohne Wurf und ohne Spiel → Start mit schwebendem Logo */
 setInterval(function () {
-  if (Date.now() - lastThrow > 5 * 60 * 1000 && !(ST && ST.game && ST.game.state.winner === null) && PAGE !== 'start' && PAGE !== 'settings') showPage('start');
+  if (Date.now() - lastThrow > 5 * 60 * 1000 && !(ST && ST.game && ST.game.state.winner === null) && Date.now() - lastTouch > 5 * 60 * 1000 && ['start', 'settings', 'cams'].indexOf(PAGE) < 0) showPage('start');
 }, 30000);
 
 $('#logoMark').innerHTML = logo(52);

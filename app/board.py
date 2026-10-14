@@ -17,6 +17,9 @@ CAL_POINTS = {
     "3": (0.0, -R_DOUBLE_OUT),
     "11": (-R_DOUBLE_OUT, 0.0),
 }
+# Neu: Außenkante Double genau am Draht zwischen zwei Feldern (leichter zu treffen)
+for _k, _a in (("20-1", 9), ("6-10", 99), ("3-19", 189), ("11-14", 279)):
+    CAL_POINTS[_k] = (R_DOUBLE_OUT * math.sin(math.radians(_a)), R_DOUBLE_OUT * math.cos(math.radians(_a)))
 
 
 def segment_at(x: float, y: float) -> int:

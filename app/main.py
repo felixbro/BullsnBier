@@ -23,6 +23,12 @@ detector = None
 async def lifespan(_app):
     global loop, detector
     loop = asyncio.get_running_loop()
+    _h = loop.get_exception_handler()
+    def _quiet(lp, ctx):   # Windows: Browser schließt Verbindung → harmloser ConnectionResetError (WinError 10054)
+        if isinstance(ctx.get("exception"), (ConnectionResetError, ConnectionAbortedError)):
+            return
+        (_h or lp.default_exception_handler)(ctx) if _h is None else _h(lp, ctx)
+    loop.set_exception_handler(_quiet)
     if not SIM:
         from .vision import Detector, init_resolution
         await asyncio.to_thread(init_resolution, config.CAMERAS)

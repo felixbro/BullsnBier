@@ -276,7 +276,30 @@ button.hstatus{cursor:pointer;}
 
 /* Kameras */
 .cams-hint{margin:-8px 0 var(--gap-l);}
-.camgrid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--gap-l);}
+.camgrid{display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:var(--gap-l); align-items:start;}
+.cam.big{padding:16px;} .cam.big .img{width:min(100%, 1180px); margin:0 auto;}
+.calside{display:flex; flex-direction:column; gap:var(--gap-s);}
+.campick{padding:10px; display:flex; flex-direction:column; gap:6px;}
+.campick .cp{display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; column-gap:12px; align-items:center; text-align:left; padding:10px 14px;
+  border-radius:var(--r-field); border:1px solid transparent; background:transparent; color:var(--ink); font:inherit;}
+.campick .cp b{font-weight:500; font-size:20px;} .campick .cp small{color:var(--ink-60, rgba(32,32,32,.6)); font-size:var(--fs-micro); justify-self:end;}
+.campick .cp .tagrow{grid-column:1 / -1; margin-top:6px;}
+.campick .cp:hover{background:rgba(255,255,255,.4);} .campick .cp.on{background:#fff; border-color:var(--lime); box-shadow:0 0 0 2px var(--lime) inset;}
+.calpanel{padding:20px; display:flex; flex-direction:column; gap:14px;}
+.calhead{display:flex; justify-content:space-between; align-items:center;}
+.calhelp{margin:0; font-size:var(--fs-ui); line-height:1.4;}
+.calpts{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.calpts button{position:relative; height:48px; border-radius:var(--r-field); border:1px solid rgba(32,32,32,.12); background:rgba(255,255,255,.5); color:var(--ink); font:inherit; font-size:18px;}
+.calpts button.cur{background:var(--ink); color:#fff; border-color:var(--ink);}
+.calpanel .acts{display:flex; gap:var(--gap-s);} .calpanel .acts > *{flex:1; justify-content:center;}
+.minib{width:150px; height:150px;}
+.minib circle{fill:none; stroke:var(--ink); stroke-width:1.2;} .minib line{stroke:var(--ink); stroke-width:.6; opacity:.5;}
+.minib text{font-size:8.5px; text-anchor:middle; fill:var(--ink);}
+.minib .pt{fill:var(--lime); stroke:#202020; stroke-width:1.5;}
+[data-theme="night"] .campick .cp{color:#fff;} [data-theme="night"] .campick .cp.on{background:rgba(255,255,255,.08);}
+[data-theme="night"] .calpts button{background:rgba(255,255,255,.06); color:#fff; border-color:rgba(255,255,255,.15);}
+[data-theme="night"] .calpts button.cur{background:var(--lime); color:#202020;}
+[data-theme="night"] .minib circle{stroke:#fff;} [data-theme="night"] .minib line{stroke:#fff;} [data-theme="night"] .minib text{fill:#fff;}
 .cam{padding:20px; display:flex; flex-direction:column; gap:var(--gap-s);}
 .cam .img{position:relative; border-radius:var(--r-field); overflow:hidden; background:var(--ink); aspect-ratio:16/9; cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M16 2v10M16 20v10M2 16h10M20 16h10' stroke='%23202020' stroke-width='5'/%3E%3Cpath d='M16 2v10M16 20v10M2 16h10M20 16h10' stroke='%23DDF96A' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23DDF96A' stroke='%23202020'/%3E%3C/g%3E%3C/svg%3E") 16 16, crosshair;}
 .cam img{display:block; width:100%; height:100%; object-fit:fill;}
@@ -287,7 +310,8 @@ button.hstatus{cursor:pointer;}
 .cam .lens::before,.cam .lens::after{content:''; position:absolute; left:50%; top:50%; background:var(--lime); box-shadow:0 0 0 1px #202020;}
 .cam .lens::before{width:2px; height:36px; margin:-18px 0 0 -1px;} .cam .lens::after{width:36px; height:2px; margin:-1px 0 0 -18px;}
 .cam .lens.l{left:10px;} .cam .lens.r{right:10px;}
-.cam .mk{position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; border:3px solid var(--lime); pointer-events:none;
+.cam .mk span{position:absolute; left:16px; top:-22px; white-space:nowrap; padding:1px 6px; border-radius:6px; background:#202020; color:var(--lime);}
+.cam .mk{position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; border:2px solid var(--lime); pointer-events:none;
   color:var(--lime); font-size:10px; display:flex; align-items:center; justify-content:center; font-weight:600;}
 .cam .seg button{height:40px; font-size:var(--fs-ui);}
 .cam .acts{display:flex; gap:var(--gap-s);} .cam .acts > *{flex:1; justify-content:center;}
