@@ -145,7 +145,7 @@ Leerlauf · Spielstart · Bull-Off · Nächster Spieler · Finish-Bereich · Pfe
 | Variable | Standard | |
 |---|---|---|
 | `CAMERAS` | Win `0,1,2` · Linux `/dev/video0,2,4` | Kameraquellen |
-| `CAM_W` / `CAM_H` | 1280 / 720 | Auflösung |
+| `CAM_W` / `CAM_H` | auto | Auflösung; `auto` = einmal ausmessen (`run.py --probe-res`) |
 | `PORT` | 8090 | |
 | `DIFF_THR` | 28 | Helligkeitsschwelle |
 | `DART_MIN` / `DART_MAX` | 250 / 40000 | Fläche Pfeil / ab hier Hand |

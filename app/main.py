@@ -24,7 +24,8 @@ async def lifespan(_app):
     global loop, detector
     loop = asyncio.get_running_loop()
     if not SIM:
-        from .vision import Detector
+        from .vision import Detector, init_resolution
+        await asyncio.to_thread(init_resolution, config.CAMERAS)
         detector = Detector(config.CAMERAS, on_detector_event)
         detector.start()
     mon = asyncio.create_task(monitor())
@@ -577,7 +578,7 @@ async def api_cam_stream(cid: str, overlay: int = 1):
 
 @app.get("/api/cal")
 def api_cal_get():
-    return detector.cal if detector else {}
+    return {c.id: detector.points(c.id) for c in detector.cams} if detector else {}
 
 
 @app.post("/api/cal/{cid}")

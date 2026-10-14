@@ -106,8 +106,8 @@ Weg A: `systemctl --user status bullsnbier`, `journalctl --user -u bullsnbier -f
 
 ```ini
 CAMERAS=/dev/video0,/dev/video2,/dev/video4   # oder rtsp://… / http://…
-CAM_W=1280
-CAM_H=720
+CAM_W=auto
+CAM_H=auto
 PORT=8090
 ACCESS_KEY=                 # gesetzt = Zugang nur mit /?key=…
 ```

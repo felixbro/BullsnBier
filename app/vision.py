@@ -8,9 +8,14 @@ from . import board
 
 from .config import DATA
 CAL_FILE = os.path.join(DATA, "calibration.json")
+RES_FILE = os.path.join(DATA, "camres.json")
 
 # --- Tuning (per ENV überschreibbar) ---
-W, H = int(os.environ.get("CAM_W", 1280)), int(os.environ.get("CAM_H", 720))
+_cw, _ch = os.environ.get("CAM_W", "auto").strip().lower(), os.environ.get("CAM_H", "auto").strip().lower()
+AUTO_RES = not (_cw.isdigit() and _ch.isdigit())        # CAM_W=auto (Standard) → beim ersten Start ausmessen
+W, H = (int(_cw), int(_ch)) if not AUTO_RES else (1280, 720)
+RES_STEPS = [(1920, 1080), (1600, 900), (1280, 720), (1024, 576), (960, 540), (848, 480), (640, 480)]
+PROBE_FPS = float(os.environ.get("PROBE_FPS", 20))      # so viele Bilder/s muss JEDE Kamera gleichzeitig schaffen
 MOTION_PX = int(os.environ.get("MOTION_PX", 400))       # Pixel-Änderung = Bewegung
 STABLE_FRAMES = int(os.environ.get("STABLE_FRAMES", 6))
 DART_MIN = int(os.environ.get("DART_MIN", 250))          # min. Fläche eines Pfeils
@@ -231,6 +236,52 @@ def open_capture(src):
     return cv2.VideoCapture(s)  # z. B. RTSP/HTTP-Stream oder Videodatei
 
 
+def set_res(w, h):
+    global W, H
+    W, H = int(w), int(h)
+
+
+def probe_resolution(srcs, say=print):
+    """Von hoch nach niedrig testen, bis ALLE Kameras gleichzeitig flüssig laufen. Rückgabe (w, h)."""
+    tried = set()
+    for w, h in RES_STEPS:
+        set_res(w, h)
+        r = test_cameras(srcs, seconds=3)
+        sizes = {(c["w"], c["h"]) for c in r}
+        ok = all(c["open"] and c["fps"] >= PROBE_FPS for c in r) and len(sizes) == 1
+        real = sizes.pop() if len(sizes) == 1 else (w, h)
+        say(f"  {w}x{h} → " + " · ".join(f"Cam {i + 1}: {c['fps']} fps {c['w']}x{c['h']} {c['fmt']}" for i, c in enumerate(r))
+            + ("  ✓" if ok else ""))
+        if ok and real[0] > 0:
+            return real
+        tried.add(real)
+    return RES_STEPS[-1]
+
+
+def init_resolution(srcs, force=False, say=print):
+    """Auflösung festlegen: config.env (feste Zahl) > gespeichertes Messergebnis > neu messen."""
+    if not AUTO_RES and not force:
+        return W, H
+    key = ",".join(srcs)
+    if not force:
+        try:
+            with open(RES_FILE) as f:
+                d = json.load(f)
+            if d.get("srcs") == key:
+                set_res(d["w"], d["h"])
+                return W, H
+        except Exception:
+            pass
+    say("Kamera-Auflösung wird getestet (einmalig, ca. 10–30 s) …")
+    w, h = probe_resolution(srcs, say)
+    set_res(w, h)
+    os.makedirs(DATA, exist_ok=True)
+    with open(RES_FILE, "w") as f:
+        json.dump({"w": w, "h": h, "srcs": key}, f)
+    say(f"Auflösung gespeichert: {w}x{h}  (neu testen: python run.py --probe-res)")
+    return w, h
+
+
 def test_cameras(srcs, seconds=4):
     """Alle Kameras GLEICHZEITIG öffnen und Bilder zählen – zeigt USB-Bandbreiten-Probleme."""
     cams = []
@@ -354,14 +405,23 @@ class Detector(threading.Thread):
     def reload_cal(self):
         self.H = {}
         for c in self.cams:
-            pts = self.cal.get(c.id)
+            pts = self.points(c.id)
             if pts:
                 Hm = homography(pts)
                 if Hm is not None:
                     self.H[c.id] = Hm
 
+    def points(self, cid):
+        """Kalibrierpunkte in aktueller Auflösung (gespeichert mit _res → bei Wechsel mitskalieren)."""
+        pts = dict(self.cal.get(cid) or {})
+        res = pts.pop("_res", None)
+        if res and tuple(res) != (W, H):
+            sx, sy = W / res[0], H / res[1]
+            pts = {k: [v[0] * sx, v[1] * sy] for k, v in pts.items()}
+        return pts
+
     def set_cal(self, cid, pts):
-        self.cal[cid] = pts
+        self.cal[cid] = {**pts, "_res": [W, H]}
         save_cal(self.cal)
         self.reload_cal()
 
