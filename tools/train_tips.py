@@ -102,6 +102,7 @@ def main():
     ap = argparse.ArgumentParser(description="Pfeilspitzen-Netz trainieren")
     ap.add_argument("--render", action="append", default=[], help="Ordner mit C4D-Frames (mehrfach möglich)")
     ap.add_argument("--app", action="append", default=[], help="Ordner data/train der App (mehrfach möglich)")
+    ap.add_argument("--app-repeat", type=int, default=3, help="echte Würfe so oft wiederholen (gegen die Übermacht der Renders)")
     ap.add_argument("--work", default="tipdata", help="Arbeitsordner für den Datensatz")
     ap.add_argument("--model", default="yolo11n.pt", help="Startmodell (n = klein/schnell, s = genauer)")
     ap.add_argument("--epochs", type=int, default=80)
@@ -123,7 +124,9 @@ def main():
         YOLO(last).train(resume=True)
         return export(a)
 
-    samples = [s for r in a.render for s in render_samples(r)] + [s for r in a.app for s in app_samples(r)]
+    real = [s for r in a.app for s in app_samples(r)]
+    print(f"Echte Würfe: {len(real)} Bilder" + (f" (×{a.app_repeat} gewichtet)" if real else ""))
+    samples = [s for r in a.render for s in render_samples(r)] + real * max(1, a.app_repeat)
     if not samples:
         sys.exit("Keine Bilder gefunden – Pfade prüfen (--render / --app).")
     print(f"{len(samples)} Bilder · {sum(len(t) for _, t, _ in samples)} sichtbare Spitzen")

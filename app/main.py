@@ -5,7 +5,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import Response, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, board, db, settings, tts, avatars, train
+from . import config, board, db, settings, tts, avatars, train, sync
 from .games import Game, MODE_NAMES, RULES, finishable
 from .effects import wled, EVENTS
 
@@ -31,6 +31,7 @@ async def lifespan(_app):
     loop.set_exception_handler(_quiet)
     if not SIM:
         from .vision import Detector, init_resolution
+        await asyncio.to_thread(sync.auto_update)
         await asyncio.to_thread(init_resolution, config.CAMERAS)
         detector = Detector(config.CAMERAS, on_detector_event)
         detector.start()
@@ -443,6 +444,37 @@ def _with_ring(s, pos):
     if pos and s["mult"] == 1 and s["seg"] not in (0, 25):
         s["ring"] = "inner" if math.hypot(*pos) < board.R_TRIPLE_IN else "outer"
     return s
+
+
+@app.get("/api/sync")
+async def api_sync():
+    st = sync.status()
+    if st["configured"]:
+        try:
+            st["remote_model"] = await asyncio.to_thread(sync.remote_model)
+        except Exception as e:
+            st["error"] = f"Cloud nicht erreichbar: {e}"
+    return st
+
+
+@app.post("/api/sync/upload")
+async def api_sync_upload():
+    if not sync.configured():
+        raise HTTPException(400, "SYNC_URL fehlt in config.env")
+    try:
+        return await asyncio.to_thread(sync.upload_training)
+    except Exception as e:
+        raise HTTPException(502, f"Hochladen fehlgeschlagen: {e}")
+
+
+@app.post("/api/sync/model")
+async def api_sync_model(body: dict = None):
+    try:
+        if (body or {}).get("rollback"):
+            return await asyncio.to_thread(sync.rollback_model)
+        return await asyncio.to_thread(sync.install_model)
+    except Exception as e:
+        raise HTTPException(502, str(e))
 
 
 @app.get("/api/train")

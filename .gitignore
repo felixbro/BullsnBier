@@ -12,3 +12,6 @@ build/
 dist/
 *.spec
 tipdata/
+tools/trainer.json
+tipdata_real/
+runs/

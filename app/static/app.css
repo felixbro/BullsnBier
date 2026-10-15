@@ -528,3 +528,5 @@ button.hstatus{cursor:pointer;}
 .trthumb .tag{justify-self:start;}
 .trcollect{display:flex; gap:10px; align-items:center; font-size:var(--fs-ui);}
 .calq{align-self:center; font-size:var(--fs-micro); opacity:.6;}
+.trsync{padding:20px; display:flex; flex-direction:column; gap:12px;} .nocams + .trsync{margin-top:var(--gap-l);}
+.trsync .acts{display:flex; gap:var(--gap-s);} .trsync .acts > *{flex:1; justify-content:center;}

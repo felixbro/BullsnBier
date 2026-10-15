@@ -123,8 +123,9 @@ function loadTrain(after) {
     $('#camsMeta').textContent = st.total + ' Würfe gesammelt · ' + st.ok + ' markiert · ' + st.todo + ' offen';
     var head = '<label class="trcollect"><input type="checkbox" id="trCollect"' + (st.collect ? ' checked' : '') + '> Beim Spielen sammeln</label>';
     if (!m || !m.sid) {
-      $('#camgrid').innerHTML = '<div class="glass nocams"><h2 class="h">Nichts zu markieren</h2><p class="lead">Einfach spielen – jeder Wurf landet hier. Korrigierte und nicht erkannte Würfe kommen zuerst.</p>' + head + '</div>';
+      $('#camgrid').innerHTML = '<div class="glass nocams"><h2 class="h">Nichts zu markieren</h2><p class="lead">Einfach spielen – jeder Wurf landet hier. Korrigierte und nicht erkannte Würfe kommen zuerst.</p>' + head + '</div><div class="glass trsync" id="trSync"></div>';
       $('#trCollect').onchange = function (e) { api('/api/train/collect', 'POST', {on: e.target.checked}); };
+      loadSync();
       return;
     }
     TRS = m; var cams = Object.keys(m.size || {}).sort();
@@ -141,7 +142,7 @@ function loadTrain(after) {
           '<p class="calhelp">Gelber Kreis = Spitze des <b>neuen</b> Pfeils (dort, wo er im Board steckt). Liegt er falsch: genau auf die Spitze klicken.</p>' +
           '<div class="acts"><button class="btn-glass" id="trHide" type="button">Nicht sichtbar</button><button class="btn-cta" id="trOk" type="button">Passt · weiter</button></div>' +
           '<div class="acts"><button class="btn-glass" id="trSkip" type="button">Überspringen</button><button class="btn-glass" id="trDel" type="button">Löschen</button></div>' +
-          head + '</div></div>';
+          head + '</div><div class="glass trsync" id="trSync"></div></div>';
     var box = $('#camgrid .cam .img'), img = $('img', box);
     attachLens(box, img);
     var mark = function () {
@@ -167,5 +168,33 @@ function loadTrain(after) {
     $('#trSkip').onclick = function () { done({skip: true}); };
     $('#trDel').onclick = function () { done({delete: true}); };
     $('#trCollect').onchange = function (e) { api('/api/train/collect', 'POST', {on: e.target.checked}); };
+    loadSync();
+  });
+}
+
+/* Abgleich mit dem Trainings-Rechner (Nextcloud) */
+function loadSync() {
+  var box = $('#trSync'); if (!box) return;
+  api('/api/sync').then(function (st) {
+    if (!st.configured) {
+      box.innerHTML = '<h2 class="h">Abgleich</h2><p class="calhelp">Noch nicht eingerichtet: <code>SYNC_URL</code>, <code>SYNC_USER</code>, <code>SYNC_PASS</code> in <code>config.env</code> eintragen.</p>';
+      return;
+    }
+    var lm = (st.model && st.model.version) || 'keins', rm = st.remote_model && st.remote_model.version;
+    var newer = rm && rm !== lm;
+    box.innerHTML = '<h2 class="h">Abgleich · ' + esc(st.setup) + '</h2>' +
+      (st.error ? '<p class="calhelp" style="color:var(--coral)">' + esc(st.error) + '</p>' : '') +
+      '<p class="calhelp"><b>' + st.ready + '</b> Würfe bereit · ' + st.todo + ' noch markieren · ' + st.uploaded + ' schon hochgeladen</p>' +
+      '<div class="acts"><button class="btn-cta" id="syUp" type="button"' + (st.ready ? '' : ' disabled') + '>Hochladen</button></div>' +
+      '<p class="calhelp">Modell hier: <b>' + esc(lm) + '</b>' + (rm ? ' · in der Cloud: <b>' + esc(rm) + '</b>' + (st.remote_model.map ? ' (Genauigkeit ' + st.remote_model.map + ')' : '') : '') + '</p>' +
+      '<div class="acts"><button class="btn-glass" id="syModel" type="button"' + (newer ? '' : ' disabled') + '>' + (newer ? 'Neues Modell installieren' : 'Modell aktuell') + '</button>' +
+      '<button class="btn-glass" id="syBack" type="button"' + (st.can_rollback ? '' : ' disabled') + '>Altes Modell</button></div>';
+    var run = function (btn, url, body, ok) {
+      var pr = api(url, 'POST', body || {}); if (typeof btnLoading === 'function') btnLoading(btn, pr);
+      pr.then(function (r) { toast(ok(r), '', 'ok'); loadSync(); }, function (e) { toast('Fehlgeschlagen', e && e.detail, 'warn'); });
+    };
+    $('#syUp').onclick = function () { run(this, '/api/sync/upload', null, function (r) { return r.sent + ' Würfe hochgeladen (' + r.mb + ' MB)'; }); };
+    $('#syModel').onclick = function () { run(this, '/api/sync/model', null, function (r) { return 'Modell ' + r.version + ' installiert'; }); };
+    $('#syBack').onclick = function () { run(this, '/api/sync/model', {rollback: true}, function (r) { return 'Zurück auf Modell ' + (r.version || 'vorher'); }); };
   });
 }

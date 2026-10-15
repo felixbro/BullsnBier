@@ -72,3 +72,10 @@ def get():
             log.warning("Pfeil-Netz nicht ladbar (%s) – Erkennung ohne Netz", e)
             _net = False
     return _net or None
+
+
+def reload():
+    """Nach Modell-Update neu laden."""
+    global _net
+    _net = None
+    return get()
