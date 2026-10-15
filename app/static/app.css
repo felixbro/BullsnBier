@@ -530,3 +530,5 @@ button.hstatus{cursor:pointer;}
 .calq{align-self:center; font-size:var(--fs-micro); opacity:.6;}
 .trsync{padding:20px; display:flex; flex-direction:column; gap:12px;} .nocams + .trsync{margin-top:var(--gap-l);}
 .trsync .acts{display:flex; gap:var(--gap-s);} .trsync .acts > *{flex:1; justify-content:center;}
+#camSnap{text-decoration:none; display:inline-flex; align-items:center;}
+.trsync button:disabled,.calpanel button:disabled{opacity:.45; pointer-events:none;}

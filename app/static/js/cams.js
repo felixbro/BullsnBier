@@ -36,10 +36,11 @@ function loadCams() {
   $('.cams-hint').textContent = CAMMODE === 'train'
     ? 'Jeder Wurf wird mit Bildern gespeichert. Hier die Spitze je Kamera bestätigen oder genau anklicken – daraus lernt später ein neuronales Netz.'
     : 'Kamera rechts wählen · 4 Punkte ins Bild tippen · Speichern. Das gelbe Raster muss danach genau auf dem Board liegen.';
-  if (CAMMODE === 'train') return loadTrain();
   var info = ST && ST.detector;
   $('#detPause').classList.toggle('hidden', !info || !info.running);
   $('#detReset').classList.toggle('hidden', !info || !info.running);
+  $('#camSnap').classList.toggle('hidden', !info || !info.running);
+  if (CAMMODE === 'train') return loadTrain();
   if (!info || !info.running) {
     $('#camsMeta').textContent = 'Simulator';
     $('#camgrid').innerHTML = '<div class="glass nocams"><h2 class="h">Simulator – keine Kameras</h2><p class="lead">Würfe werden per Klick aufs Board eingegeben. Für den Live-Betrieb ohne <code>--sim</code> starten.</p></div>';
