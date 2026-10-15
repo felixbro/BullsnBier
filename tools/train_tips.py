@@ -109,7 +109,16 @@ def main():
     ap.add_argument("--batch", type=int, default=-1, help="-1 = automatisch nach Grafikspeicher")
     ap.add_argument("--out", default=os.path.join("data", "models", "tips.onnx"))
     ap.add_argument("--check", action="store_true", help="nur Labels einzeichnen")
+    ap.add_argument("--resume", action="store_true", help="abgebrochenes Training fortsetzen (Strg+C → später --resume)")
     a = ap.parse_args()
+
+    last = os.path.join(a.work, "runs", "tips", "weights", "last.pt")
+    if a.resume:
+        if not os.path.exists(last):
+            sys.exit("Nichts zum Fortsetzen gefunden: " + last)
+        from ultralytics import YOLO
+        YOLO(last).train(resume=True)
+        return export(a)
 
     samples = [s for r in a.render for s in render_samples(r)] + [s for r in a.app for s in app_samples(r)]
     if not samples:
@@ -124,6 +133,11 @@ def main():
     model.train(data=yaml, epochs=a.epochs, imgsz=a.imgsz, batch=a.batch, project=os.path.join(a.work, "runs"), name="tips",
                 exist_ok=True, rect=False, mosaic=1.0, degrees=8, translate=0.1, scale=0.3, fliplr=0.5,
                 hsv_h=0.02, hsv_s=0.6, hsv_v=0.5, close_mosaic=10, patience=25, plots=True)
+    export(a)
+
+
+def export(a):
+    from ultralytics import YOLO
     best = os.path.join(a.work, "runs", "tips", "weights", "best.pt")
     onnx = YOLO(best).export(format="onnx", imgsz=a.imgsz, opset=12, simplify=True)
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
