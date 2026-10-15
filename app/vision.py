@@ -645,6 +645,9 @@ class Detector(threading.Thread):
                     (a1, a2) = r["seg"]
                     cv2.line(im, (int(a1[0]), int(a1[1])), (int(a2[0]), int(a2[1])), (255, 200, 0), 3)
                     cv2.circle(im, tuple(int(v) for v in r["tip"]), 6, (0, 255, 255), 2)
+                for u, v, sc in self.prev_tips.get(k, []):   # Netz-Spitzen: magenta + Sicherheit
+                    cv2.drawMarker(im, (int(u), int(v)), (255, 0, 255), cv2.MARKER_TILTED_CROSS, 18, 2)
+                    cv2.putText(im, f"{sc:.2f}", (int(u) + 8, int(v) - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 1)
                 cv2.putText(im, f"Cam {int(k) + 1}", (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                 tiles.append(im)
             h = min(t.shape[0] for t in tiles)
