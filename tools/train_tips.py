@@ -110,9 +110,12 @@ def main():
     ap.add_argument("--out", default=os.path.join("data", "models", "tips.onnx"))
     ap.add_argument("--check", action="store_true", help="nur Labels einzeichnen")
     ap.add_argument("--resume", action="store_true", help="abgebrochenes Training fortsetzen (Strg+C → später --resume)")
+    ap.add_argument("--export", action="store_true", help="nur best.pt → ONNX exportieren")
     a = ap.parse_args()
 
-    last = os.path.join(a.work, "runs", "tips", "weights", "last.pt")
+    last = weights(a, "last.pt")
+    if a.export:
+        return export(a)
     if a.resume:
         if not os.path.exists(last):
             sys.exit("Nichts zum Fortsetzen gefunden: " + last)
@@ -130,19 +133,28 @@ def main():
     yaml = build(samples, a.work)
     from ultralytics import YOLO
     model = YOLO(a.model)
-    model.train(data=yaml, epochs=a.epochs, imgsz=a.imgsz, batch=a.batch, project=os.path.join(a.work, "runs"), name="tips",
+    model.train(data=yaml, epochs=a.epochs, imgsz=a.imgsz, batch=a.batch, project=os.path.abspath(os.path.join(a.work, "runs")), name="tips",
                 exist_ok=True, rect=False, mosaic=1.0, degrees=8, translate=0.1, scale=0.3, fliplr=0.5,
                 hsv_h=0.02, hsv_s=0.6, hsv_v=0.5, close_mosaic=10, patience=25, plots=True)
     export(a)
 
 
+def weights(a, name):
+    """Ultralytics legt relative Projekte unter runs/detect/… ab – beide Orte prüfen."""
+    for base in (os.path.join(a.work, "runs", "tips"), os.path.join("runs", "detect", a.work, "runs", "tips")):
+        p = os.path.join(base, "weights", name)
+        if os.path.exists(p):
+            return p
+    return os.path.join(a.work, "runs", "tips", "weights", name)
+
+
 def export(a):
     from ultralytics import YOLO
-    best = os.path.join(a.work, "runs", "tips", "weights", "best.pt")
+    best = weights(a, "best.pt")
     onnx = YOLO(best).export(format="onnx", imgsz=a.imgsz, opset=12, simplify=True)
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     shutil.copy(onnx, a.out)
-    print(f"\nFertig → {a.out}   (Kurven/Beispiele: {os.path.join(a.work, 'runs', 'tips')})")
+    print(f"\nFertig → {a.out}   (Kurven/Beispiele: {os.path.dirname(os.path.dirname(best))})")
 
 
 if __name__ == "__main__":
