@@ -4,7 +4,7 @@ os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")   # keine Warnungs-Flut bei f
 import cv2
 import numpy as np
 
-from . import board, train
+from . import board, train, tipnet
 
 from .config import DATA
 CAL_FILE = os.path.join(DATA, "calibration.json")
@@ -460,6 +460,7 @@ class Detector(threading.Thread):
         self.reload_cal()
         self.ref, self.empty, self.prev = {}, {}, {}
         self.on_board = []   # Trainings-IDs der Pfeile, die gerade im Board stecken
+        self.prev_tips = {}  # vom Netz gefundene Spitzen beim letzten Wurf (je Kamera)
         self.state = "idle"
         self.stable = 0
         self.paused = False
@@ -497,6 +498,7 @@ class Detector(threading.Thread):
         """Board ist leer -> neue Referenz."""
         self.reset_flag = True
         self.on_board = []
+        self.prev_tips = {}
 
     def run(self):
         for c in self.cams:
@@ -541,7 +543,55 @@ class Detector(threading.Thread):
             self.state = "idle"
             self.evaluate(frames)
 
-    def collect(self, dbg, p=None, score=None, how=""):
+    def net_locate(self, masks):
+        """Neuer Pfeil per Netz: Spitzen je Kamera finden, schon steckende abziehen, Kameras abgleichen.
+        Rückgabe (p_mm, {cam: Abstand}, {cam: [u, v]}, sicher) oder None (→ alte Methode)."""
+        net = tipnet.get()
+        if not net or not self.H:
+            return None
+        cands, allt = {}, {}
+        for c in self.cams:
+            if c.id not in self.H:
+                continue
+            with c.lock:
+                f = None if c.frame is None else c.frame.copy()
+            if f is None:
+                continue
+            tips = net(f)
+            allt[c.id] = tips
+            prev = self.prev_tips.get(c.id, [])
+            new = [t for t in tips if all(math.hypot(t[0] - a, t[1] - b) > 12 for a, b, _ in prev)]
+            m = masks.get(c.id)
+            if m is not None and cv2.countNonZero(m) and new:   # nahe an der Bildänderung bevorzugen
+                dist = cv2.distanceTransform(255 - m, cv2.DIST_L2, 3)
+                hh, ww = m.shape
+                new.sort(key=lambda t: dist[min(max(int(t[1]), 0), hh - 1), min(max(int(t[0]), 0), ww - 1)] - 20 * t[2])
+            cands[c.id] = [(to_board(self.H[c.id], (u, v)), sc, (u, v)) for u, v, sc in new[:2]]
+        self.prev_tips = allt
+        pts = [(cid, xy, sc, uv) for cid, lst in cands.items() for xy, sc, uv in lst if math.hypot(*xy) < 240]
+        if not pts:
+            return None
+        best = None
+        for cid, xy, sc, uv in pts:   # Kandidat mit den meisten zustimmenden Kameras
+            sup = {}
+            for cj, xj, sj, uj in pts:
+                dd = math.hypot(xj[0] - xy[0], xj[1] - xy[1])
+                if dd <= FUSE_MM and (cj not in sup or dd < sup[cj][0]):
+                    sup[cj] = (dd, xj, sj, uj)
+            key = (len(sup), sum(v[2] for v in sup.values()))
+            if best is None or key > best[0]:
+                best = (key, sup)
+        (n, conf), sup = best
+        if n < 2 and not (len(cands) == 1 and conf >= 0.7):
+            return None   # Kameras uneinig → alte Methode
+        p = (float(np.mean([v[1][0] for v in sup.values()])), float(np.mean([v[1][1] for v in sup.values()])))
+        d = {cid: math.hypot(v[1][0] - p[0], v[1][1] - p[1]) for cid, v in sup.items()}
+        uv = {cid: [round(v[3][0], 1), round(v[3][1], 1)] for cid, v in sup.items()}
+        sure = n == len(allt) and n >= 2 and max(d.values()) < 4 and min(v[2] for v in sup.values()) > 0.6
+        log.info("Netz: %d/%d Kameras einig, %.0f ms je Bild", n, len(allt), net.ms)
+        return p, d, uv, sure
+
+    def collect(self, dbg, p=None, score=None, how="", net_uv=None, sure=False):
         """Trainingsdaten: Farbbilder aller Kameras + Vorschlag für die Spitze je Kamera (Pixel)."""
         try:
             if not train.collecting():
@@ -562,9 +612,12 @@ class Detector(threading.Thread):
                     tips[c.id] = list(r["tip"])
             if not imgs:
                 return None
-            sid = train.save(imgs, {"status": "auto" if p is not None else "unknown", "pos": list(p) if p is not None else None,
+            if net_uv:
+                tips = dict(net_uv)
+            st = "unknown" if p is None else ("ok" if sure else "auto")   # sicher = alle Kameras einig → gilt als bestätigt
+            sid = train.save(imgs, {"status": st, "auto_ok": bool(sure), "pos": list(p) if p is not None else None,
                                     "name": score.get("name") if score else None, "how": how, "size": size,
-                                    "proposal": prop, "cam_tips": tips, "tips": {}, "prev": list(self.on_board)})
+                                    "proposal": prop, "cam_tips": tips, "tips": dict(net_uv) if sure else {}, "prev": list(self.on_board)})
             if sid:
                 self.on_board.append(sid)
             return sid
@@ -605,9 +658,10 @@ class Detector(threading.Thread):
             log.warning("Debug-Bild fehlgeschlagen: %s", e)
 
     def evaluate(self, frames):
-        areas, results, lines, dbg = {}, {}, {}, {}
+        areas, results, lines, dbg, masks = {}, {}, {}, {}, {}
         for k, g in frames.items():
             m = mask(g, self.ref.get(k, g))
+            masks[k] = m
             areas[k] = int(cv2.countNonZero(m))
             if DART_MIN <= areas[k] <= DART_MAX:
                 r = find_tip(m, self.H.get(k), self.roi.get(k) if k in self.roi and self.roi[k].shape == g.shape else None)
@@ -629,13 +683,18 @@ class Detector(threading.Thread):
             self.empty = dict(frames)   # Lichtdrift mitnehmen
             log.info("Takeout erkannt (Rest %d px)", empty_area)
             self.on_board = []
+            self.prev_tips = {}
             self.on_event({"type": "takeout"})
             return
         self.ref = dict(frames)
         if big > DART_MAX:
             return  # Hand im Bild – abwarten
-        p, d, how = None, {}, "Spitze"
-        if len(lines) >= 2:
+        p, d, how, net_uv, net_ok = None, {}, "Spitze", None, False
+        r = self.net_locate(masks)
+        if r:
+            p, d, net_uv, net_ok = r
+            how = "Netz"
+        if p is None and len(lines) >= 2:
             r = intersect(lines)
             # Schnittpunkt nur nehmen, wenn er zu mindestens einer Spitzen-Schätzung passt (Schutz vor Fehlformen)
             if r and math.hypot(*r[0]) < 260 and (not results or min(math.hypot(v[0] - r[0][0], v[1] - r[0][1]) for v in results.values()) < 25):
@@ -653,6 +712,6 @@ class Detector(threading.Thread):
         self.debug_shot(dbg, s.get("name"))
         log.info("Dart %s (%s) · %s", s.get("name"), how, " · ".join(
             f"Cam {int(k) + 1}: {d[k]:.0f} mm" for k in sorted(d)))
-        sid = self.collect(dbg, p, s, how)
+        sid = self.collect(dbg, p, s, how, net_uv, net_ok)
         self.on_event({"type": "dart", "sid": sid, "x": p[0], "y": p[1], "score": s, "spread": spread, "agree": agree, "n": len(d),
                        "cams": {k: list(v) for k, v in results.items()}})
