@@ -532,3 +532,7 @@ button.hstatus{cursor:pointer;}
 .trsync .acts{display:flex; gap:var(--gap-s);} .trsync .acts > *{flex:1; justify-content:center;}
 #camSnap{text-decoration:none; display:inline-flex; align-items:center;}
 .trsync button:disabled,.calpanel button:disabled{opacity:.45; pointer-events:none;}
+/* Trainingsdaten: rechte Spalte passt immer in die Bühne */
+#camgrid .calside{max-height:800px; overflow-y:auto; scrollbar-width:thin;}
+.trthumb{padding:6px 10px !important; grid-template-columns:96px 1fr !important;} .trthumb img{width:96px !important;}
+.trsync{padding:16px; gap:8px;} .trsync .h{font-size:22px;}
