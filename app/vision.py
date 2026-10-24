@@ -376,6 +376,12 @@ def list_cameras(max_idx=10):
     else:
         import glob
         cands = sorted(glob.glob("/dev/v4l/by-path/*video-index0")) or sorted(glob.glob("/dev/video*"))
+        seen, uniq = set(), []
+        for c in sorted(cands, key=lambda p: "usbv2" in p):   # neuere udev legen je Kamera …-usb- UND …-usbv2- an
+            real = os.path.realpath(c)
+            if real not in seen:
+                seen.add(real); uniq.append(c)
+        cands = uniq
     for c in cands:
         cap = open_capture(c)
         ok = cap.isOpened() and cap.read()[0]
