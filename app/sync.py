@@ -209,35 +209,60 @@ def pending():
     return ready, todo
 
 
-def upload_training():
-    """Alle neuen markierten Würfe als ZIP hochladen. Rückgabe {sent, mb}."""
+PART_MB = float(os.environ.get("SYNC_PART_MB", 4))   # Pakete klein halten – manche Proxys brechen große Uploads ab
+
+
+def _sample_mb(sid):
+    d = os.path.join(TRAIN_DIR, sid)
+    return sum(os.path.getsize(os.path.join(d, f)) for f in os.listdir(d)) / 1e6 if os.path.isdir(d) else 0
+
+
+def upload_training(progress=None):
+    """Neue markierte Würfe in kleinen ZIP-Paketen hochladen; jedes fertige Paket wird sofort als erledigt gemerkt.
+    Rückgabe {sent, mb, parts}."""
+    global LAST_UPLOAD
     with _lock:
         ready, _ = pending()
         if not ready:
-            return {"sent": 0, "mb": 0}
-        need = set(ready)
-        for sid in ready:   # Bild enthält ältere Pfeile → deren Labels mitschicken
-            need.update((_meta(sid) or {}).get("prev", []))
-        tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False); tmp.close()
-        with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_STORED) as z:   # JPGs sind schon komprimiert
-            for sid in sorted(need):
-                d = os.path.join(TRAIN_DIR, sid)
-                if os.path.isdir(d):
-                    for f in os.listdir(d):
-                        z.write(os.path.join(d, f), f"{sid}/{f}")
-        mb = os.path.getsize(tmp.name) / 1e6
+            return {"sent": 0, "mb": 0, "parts": 0}
+        parts, cur, size = [], [], 0.0
+        for sid in ready:   # Würfe zu Paketen bis PART_MB bündeln
+            need = [sid] + [p for p in (_meta(sid) or {}).get("prev", [])]   # ältere Pfeile im Bild mitschicken
+            mb = sum(_sample_mb(x) for x in need)
+            if cur and size + mb > PART_MB:
+                parts.append(cur); cur, size = [], 0.0
+            cur.append(sid); size += mb
+        if cur:
+            parts.append(cur)
         r, pre = up_remote()
-        name = f"batch_{time.strftime('%Y%m%d-%H%M%S')}.zip"
         if pre:
             r.mkdirs(pre)
-        else:
-            name = f"{SETUP}__{name}"   # Ablage ist flach → Board-Name in den Dateinamen
-        r.put_file(pre + name, tmp.name)
-        os.remove(tmp.name)
-        json.dump(sorted(_uploaded() | set(ready)), open(UPLOADED, "w"))
-        global LAST_UPLOAD
-        LAST_UPLOAD = time.time()
-        return {"sent": len(ready), "mb": round(mb, 1)}
+        sent, total = 0, 0.0
+        for i, part in enumerate(parts):
+            files = set(part)
+            for sid in part:
+                files.update((_meta(sid) or {}).get("prev", []))
+            tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False); tmp.close()
+            with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_STORED) as z:   # JPGs sind schon komprimiert
+                for sid in sorted(files):
+                    d = os.path.join(TRAIN_DIR, sid)
+                    if os.path.isdir(d):
+                        for f in os.listdir(d):
+                            z.write(os.path.join(d, f), f"{sid}/{f}")
+            name = f"batch_{time.strftime('%Y%m%d-%H%M%S')}_{i + 1:03d}.zip"
+            if not pre:
+                name = f"{SETUP}__{name}"   # Ablage ist flach → Board-Name in den Dateinamen
+            try:
+                r.put_file(pre + name, tmp.name)
+                total += os.path.getsize(tmp.name) / 1e6
+            finally:
+                os.remove(tmp.name)
+            json.dump(sorted(_uploaded() | set(part)), open(UPLOADED, "w"))   # Fortschritt sichern
+            sent += len(part)
+            LAST_UPLOAD = time.time()
+            if progress:
+                progress(i + 1, len(parts))
+        return {"sent": sent, "mb": round(total, 1), "parts": len(parts)}
 
 
 LAST_UPLOAD = 0.0

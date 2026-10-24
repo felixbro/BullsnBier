@@ -195,7 +195,7 @@ function loadSync() {
       var pr = api(url, 'POST', body || {}); if (typeof btnLoading === 'function') btnLoading(btn, pr);
       pr.then(function (r) { toast(ok(r), '', 'ok'); loadSync(); }, function (e) { toast('Fehlgeschlagen', e && e.detail, 'warn'); });
     };
-    $('#syUp').onclick = function () { run(this, '/api/sync/upload', null, function (r) { return r.sent + ' Würfe hochgeladen (' + r.mb + ' MB)'; }); };
+    $('#syUp').onclick = function () { run(this, '/api/sync/upload', null, function (r) { return r.sent + ' Würfe hochgeladen (' + r.mb + ' MB' + (r.parts > 1 ? ', ' + r.parts + ' Pakete' : '') + ')'; }); };
     $('#syModel').onclick = function () { run(this, '/api/sync/model', null, function (r) { return 'Modell ' + r.version + ' installiert'; }); };
     $('#syBack').onclick = function () { run(this, '/api/sync/model', {rollback: true}, function (r) { return 'Zurück auf Modell ' + (r.version || 'vorher'); }); };
   });
