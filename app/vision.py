@@ -369,7 +369,7 @@ def test_cameras(srcs, seconds=4):
 
 
 def list_cameras(max_idx=10):
-    """Verfügbare Kameras finden (für --list-cameras)."""
+    """Verfügbare Kameras finden (für --list-cameras). Nicht lesbare Geräte kommen mit Grund zurück."""
     found = []
     if sys.platform.startswith("win"):
         cands = [str(i) for i in range(max_idx)]
@@ -380,8 +380,17 @@ def list_cameras(max_idx=10):
         cap = open_capture(c)
         ok = cap.isOpened() and cap.read()[0]
         if ok:
-            found.append({"src": c, "w": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            found.append({"src": c, "ok": True, "w": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
                           "h": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))})
+        elif c.startswith("/dev/"):
+            if not os.access(c, os.R_OK | os.W_OK):
+                why = "keine Rechte (Gruppe video – neu anmelden/neu starten)"
+            elif cap.isOpened():
+                why = "liefert kein Bild (belegt? läuft der Dienst dartcam?)"
+            else:
+                why = "lässt sich nicht öffnen (belegt durch dartcam/Autodarts?)"
+            if "by-path" in c or "index0" in c or os.path.basename(c).startswith("video"):
+                found.append({"src": c, "ok": False, "why": why})
         cap.release()
     return found
 

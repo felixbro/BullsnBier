@@ -90,7 +90,7 @@ fi
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"; IP="${IP:-$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')}"
 echo
-echo "Kameras:"; .venv/bin/python run.py --list-cameras || true
+echo "Kameras:"; $CTL stop dartcam; .venv/bin/python run.py --list-cameras || true; $CTL start dartcam
 echo
 echo "Fertig → http://${IP:-localhost}:$PORT_NR"
 echo "Kamera-Pfade ggf. in config.env anpassen, dann: $CTL restart dartcam   ·  Log: $LOG"

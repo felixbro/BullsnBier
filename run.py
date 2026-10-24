@@ -62,10 +62,20 @@ if a.test_cameras:
 
 if a.list_cameras:
     from app.vision import list_cameras
-    cams = list_cameras()
+    allc = list_cameras()
+    cams = [c for c in allc if c.get("ok", True)]
     print("\nGefundene Kameras:" if cams else "\nKeine Kamera gefunden.")
     for c in cams:
         print(f"  {c['src']}   ({c['w']}x{c['h']})")
+    bad = [c for c in allc if not c.get("ok", True)]
+    if bad:
+        print("\nVorhanden, aber nicht lesbar:")
+        for c in bad:
+            print(f"  {c['src']}   – {c['why']}")
+        if sys.platform.startswith("linux"):
+            print("\nTipp: Dienst kurz stoppen und erneut versuchen:\n  sudo systemctl stop dartcam   (Fedora: systemctl --user stop dartcam)")
+    elif not cams and sys.platform.startswith("linux"):
+        print("Kein Gerät unter /dev/video* – Kabel/USB-Port prüfen:  lsusb   ·   v4l2-ctl --list-devices")
     if cams:
         print("\nIn config.env eintragen, z. B.:\n  CAMERAS=" + ",".join(c["src"] for c in cams[:3]))
     raise SystemExit(0)
