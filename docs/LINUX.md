@@ -1,6 +1,6 @@
 # Bulls’n’Bier unter Linux installieren
 
-Getestet für Debian/Ubuntu, Raspberry Pi OS und den Autodarts-Mini-PC. Zwei Wege:
+Für Debian/Ubuntu, Raspberry Pi OS, den Autodarts-Mini-PC sowie Fedora (dnf) und Arch (pacman) – `install.sh` erkennt die Paketverwaltung selbst. Zwei Wege:
 
 | | Weg A: fertiges Paket | Weg B: aus dem Quellcode |
 |---|---|---|
@@ -44,7 +44,7 @@ Daten, Stimmen und `config.env` liegen in `~/.local/share/bullsnbier/`.
 ## Weg B – aus dem Quellcode (empfohlen am Board)
 
 ```bash
-sudo apt install -y git
+sudo apt install -y git        # Fedora: sudo dnf install -y git
 git clone https://github.com/felixbro/BullsnBier.git
 cd BullsnBier
 ./install.sh
@@ -72,6 +72,19 @@ Ohne Dienst bzw. zum Testen:
 ```bash
 ./start-sim.sh                     # Simulator (eigene Daten in data-sim/)
 ./start.sh                         # live im Vordergrund
+```
+
+---
+
+### Fedora (SELinux)
+
+`install.sh` richtet dort einen **Benutzer-Dienst** ein (SELinux erlaubt keinen System-Dienst aus dem Home-Ordner) und öffnet den Port in `firewalld`. Befehle daher mit `--user`, ohne `sudo`:
+
+```bash
+systemctl --user status dartcam
+systemctl --user restart dartcam
+systemctl --user stop dartcam          # z. B. vor run.py --probe-res
+journalctl --user -u dartcam -f
 ```
 
 ---
