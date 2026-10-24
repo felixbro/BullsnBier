@@ -190,7 +190,7 @@ class App:
         old = r.get("models/latest.json")
         old = json.loads(old) if old else {}
         d = run_dir()
-        info = {"version": time.strftime("%Y-%m-%d %H:%M"), "map": best_map(d) if d else None,
+        info = {"version": time.strftime("%Y-%m-%d %H:%M:%S"), "map": best_map(d) if d else None,
                 "real": sum(len(os.listdir(p)) for p in glob.glob(os.path.join(REAL, "*")) if os.path.isdir(p))}
         ok = []
         self.root.after(0, lambda: ok.append(messagebox.askyesno(
@@ -200,12 +200,18 @@ class App:
             time.sleep(0.1)
         if not ok[0]:
             return self.say("Abgebrochen.")
-        r.mkdirs("models")
-        if old:   # Vorgänger in der Cloud aufheben
-            prev = r.get("models/tips.onnx")
-            if prev:
-                r.put_bytes(f"models/archiv/tips_{old.get('version', 'alt').replace(':', '').replace(' ', '_')}.onnx", prev)
+        self.say("Ordner prüfen …")
+        r.mkdirs("models/archiv")
+        if old and "tips.onnx" in r.ls("models"):   # Vorgänger in der Cloud aufheben (serverseitig kopieren)
+            name = f"models/archiv/tips_{str(old.get('version', 'alt')).replace(':', '').replace(' ', '_')}.onnx"
+            self.say(f"Altes Modell → {name}")
+            try:
+                r.copy("models/tips.onnx", name)
+            except Exception as e:
+                self.say(f"  Archivieren übersprungen: {e}")
+        self.say(f"Lade tips.onnx hoch ({os.path.getsize(MODEL) / 1e6:.1f} MB) …")
         r.put_file("models/tips.onnx", MODEL)
+        self.say("Schreibe latest.json …")
         r.put_bytes("models/latest.json", json.dumps(info).encode())
         self.say(f"Veröffentlicht: {info['version']} – am Darts-Rechner unter Kameras › Trainingsdaten installieren.")
 

@@ -45,9 +45,30 @@ class Remote:
         self.auth = "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode() if user else None
 
     def _req(self, method, path, data=None, headers=None, timeout=60):
-        r = urllib.request.Request(self.url + "/" + urllib.parse.quote(path.strip("/")), data=data, method=method,
-                                   headers={**({"Authorization": self.auth} if self.auth else {}), **(headers or {})})
-        return urllib.request.urlopen(r, timeout=timeout)
+        """Mit Wiederholung bei abgebrochener Verbindung (Proxy/TLS: „EOF occurred in violation of protocol“)."""
+        for attempt in range(3):
+            if hasattr(data, "seek"):
+                data.seek(0)
+            r = urllib.request.Request(self.full(path), data=data, method=method,
+                                       headers={**({"Authorization": self.auth} if self.auth else {}), **(headers or {})})
+            try:
+                return urllib.request.urlopen(r, timeout=timeout)
+            except urllib.error.HTTPError:
+                raise
+            except (urllib.error.URLError, ConnectionError, OSError) as e:
+                if attempt == 2:
+                    raise RuntimeError(f"{method} {path}: Verbindung abgebrochen ({getattr(e, 'reason', e)})") from e
+                time.sleep(2 * (attempt + 1))
+
+    def full(self, path):
+        return self.url + "/" + urllib.parse.quote(path.strip("/"))
+
+    def copy(self, src, dst):
+        """Serverseitig kopieren (WebDAV COPY) – nichts wird herunter- oder hochgeladen."""
+        if self.local:
+            os.makedirs(os.path.dirname(self._p(dst)), exist_ok=True)
+            return shutil.copyfile(self._p(src), self._p(dst))
+        self._req("COPY", src, headers={"Destination": self.full(dst), "Overwrite": "T"}).read()
 
     @classmethod
     def share(cls, link, pw=""):
