@@ -7,7 +7,7 @@ USER_NAME="${SUDO_USER:-$USER}"
 
 echo "== Pakete"
 if command -v apt-get >/dev/null; then
-  sudo apt-get update
+  sudo apt-get update || echo "Hinweis: 'apt-get update' meldet Fehler (z. B. fremdes Paketdepot wie Spotify) – mache trotzdem weiter."
   sudo apt-get install -y python3 python3-venv python3-pip v4l-utils libgl1 libglib2.0-0
 elif command -v dnf >/dev/null; then
   sudo dnf install -y python3 python3-pip v4l-utils mesa-libGL glib2 git
