@@ -185,7 +185,8 @@ function loadSync() {
     var newer = rm && rm !== lm;
     box.innerHTML = '<h2 class="h">Abgleich · ' + esc(st.setup) + '</h2>' +
       (st.error ? '<p class="calhelp" style="color:var(--coral)">' + esc(st.error) + '</p>' : '') +
-      '<p class="calhelp"><b>' + st.ready + '</b> Würfe bereit · ' + st.todo + ' noch markieren · ' + st.uploaded + ' schon hochgeladen</p>' +
+      '<p class="calhelp"><b>' + st.ready + '</b> Würfe bereit · ' + st.todo + ' noch markieren · ' + st.uploaded + ' schon hochgeladen' +
+        (st.mode ? ' · über ' + esc(st.mode) : '') + (st.auto_upload ? ' · <b>automatisch</b>' : '') + '</p>' +
       '<div class="acts"><button class="btn-cta" id="syUp" type="button"' + (st.ready ? '' : ' disabled') + '>Hochladen</button></div>' +
       '<p class="calhelp">Modell hier: <b>' + esc(lm) + '</b>' + (rm ? ' · in der Cloud: <b>' + esc(rm) + '</b>' + (st.remote_model.map ? ' (Genauigkeit ' + st.remote_model.map + ')' : '') : '') + '</p>' +
       '<div class="acts"><button class="btn-glass" id="syModel" type="button"' + (newer ? '' : ' disabled') + '>' + (newer ? 'Neues Modell installieren' : 'Modell aktuell') + '</button>' +

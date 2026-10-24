@@ -128,14 +128,19 @@ class App:
         os.makedirs(REAL, exist_ok=True)
         done = set(json.load(open(done_f))) if os.path.exists(done_f) else set()
         new = 0
-        for setup in r.ls("train"):
-            for z in r.ls(f"train/{setup}"):
-                key = f"{setup}/{z}"
-                if not z.endswith(".zip") or key in done:
+        files = []   # (Board, Pfad in der Cloud) – Ordner train/<Board>/ oder flache Ablage train/<Board>__batch_….zip
+        for e in r.ls("train"):
+            if e.endswith(".zip"):
+                files.append((e.split("__")[0] if "__" in e else "Board", f"train/{e}"))
+            else:
+                files += [(e, f"train/{e}/{z}") for z in r.ls(f"train/{e}") if z.endswith(".zip")]
+        for setup, path in files:
+                key = path[len("train/"):]
+                if key in done:
                     continue
                 self.say(f"↓ {key}")
                 tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False); tmp.close()
-                r.get(f"train/{setup}/{z}", tmp.name)
+                r.get(path, tmp.name)
                 with zipfile.ZipFile(tmp.name) as zf:
                     zf.extractall(os.path.join(REAL, setup))
                 os.remove(tmp.name)

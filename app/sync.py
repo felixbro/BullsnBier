@@ -6,6 +6,13 @@ config.env:
   SETUP_NAME=Buschi         (Name dieses Boards, Unterordner für die Trainingsdaten)
   SYNC_AUTO_MODEL=0         (1 = beim Start nach neuem Modell schauen und installieren)
 
+Ohne Konto-Zugang (empfohlen am Board) – zwei Nextcloud-Freigabelinks:
+  SYNC_UPLOAD_LINK=https://cloud.example.de/s/AbCd…   „Dateiablage“ (nur hochladen, nichts sehen)
+  SYNC_UPLOAD_PASS=…                                   Passwort der Freigabe (optional)
+  SYNC_MODEL_LINK=https://cloud.example.de/s/XyZ…     Ordner „models“, nur lesen
+  SYNC_MODEL_PASS=…
+  SYNC_AUTO_UPLOAD=1        markierte Würfe automatisch hochladen (wenn kein Spiel läuft)
+
 Ablage:
   train/<SETUP_NAME>/batch_<zeit>.zip   ← Darts-Rechner lädt hoch
   models/tips.onnx + models/latest.json ← Trainings-Rechner veröffentlicht
@@ -20,6 +27,10 @@ USER = os.environ.get("SYNC_USER", "").strip()
 PASS = os.environ.get("SYNC_PASS", "").strip()
 SETUP = os.environ.get("SETUP_NAME", "").strip() or socket.gethostname()
 AUTO_MODEL = os.environ.get("SYNC_AUTO_MODEL", "0").strip() == "1"
+UP_LINK, UP_PASS = os.environ.get("SYNC_UPLOAD_LINK", "").strip(), os.environ.get("SYNC_UPLOAD_PASS", "").strip()
+MODEL_LINK, MODEL_PASS = os.environ.get("SYNC_MODEL_LINK", "").strip(), os.environ.get("SYNC_MODEL_PASS", "").strip()
+AUTO_UPLOAD = os.environ.get("SYNC_AUTO_UPLOAD", "0").strip() == "1"
+AUTO_MIN = int(os.environ.get("SYNC_AUTO_MIN", 10))   # ab so vielen fertigen Würfen hochladen (spätestens nach 12 h)
 TRAIN_DIR = os.path.join(DATA, "train")
 MODEL_DIR = os.path.join(DATA, "models")
 UPLOADED = os.path.join(TRAIN_DIR, "_uploaded.json")
@@ -37,6 +48,21 @@ class Remote:
         r = urllib.request.Request(self.url + "/" + urllib.parse.quote(path.strip("/")), data=data, method=method,
                                    headers={**({"Authorization": self.auth} if self.auth else {}), **(headers or {})})
         return urllib.request.urlopen(r, timeout=timeout)
+
+    @classmethod
+    def share(cls, link, pw=""):
+        """Nextcloud-Freigabelink https://host/s/TOKEN → öffentliches WebDAV (Token als Benutzer)."""
+        u = urllib.parse.urlparse(link)
+        parts = u.path.rstrip("/").split("/")
+        if "s" not in parts:
+            raise ValueError("Freigabelink erwartet: https://…/s/TOKEN")
+        i = parts.index("s")
+        base = f"{u.scheme}://{u.netloc}{'/'.join(parts[:i])}/public.php/webdav"
+        r = cls(base, parts[i + 1], pw)
+        r.is_share = True
+        return r
+
+    is_share = False
 
     def _p(self, path):
         return os.path.join(self.url, *path.strip("/").split("/"))
@@ -108,7 +134,24 @@ class Remote:
 
 
 def configured():
-    return bool(URL)
+    return bool(URL or UP_LINK or MODEL_LINK)
+
+
+def up_remote():
+    """Ziel fürs Hochladen: Ablage-Link (flach, nur schreiben) oder Konto-Ordner train/<Board>/."""
+    if UP_LINK:
+        return Remote.share(UP_LINK, UP_PASS), ""
+    if URL:
+        return Remote(), f"train/{SETUP}/"
+    raise RuntimeError("Kein Upload-Ziel: SYNC_UPLOAD_LINK oder SYNC_URL fehlt")
+
+
+def model_remote():
+    if MODEL_LINK:
+        return Remote.share(MODEL_LINK, MODEL_PASS), ""
+    if URL:
+        return Remote(), "models/"
+    raise RuntimeError("Keine Modell-Quelle: SYNC_MODEL_LINK oder SYNC_URL fehlt")
 
 
 # ───────────── Darts-Rechner: Trainingsdaten hochladen ─────────────
@@ -162,12 +205,29 @@ def upload_training():
                     for f in os.listdir(d):
                         z.write(os.path.join(d, f), f"{sid}/{f}")
         mb = os.path.getsize(tmp.name) / 1e6
-        r = Remote()
-        r.mkdirs(f"train/{SETUP}")
-        r.put_file(f"train/{SETUP}/batch_{time.strftime('%Y%m%d-%H%M%S')}.zip", tmp.name)
+        r, pre = up_remote()
+        name = f"batch_{time.strftime('%Y%m%d-%H%M%S')}.zip"
+        if pre:
+            r.mkdirs(pre)
+        else:
+            name = f"{SETUP}__{name}"   # Ablage ist flach → Board-Name in den Dateinamen
+        r.put_file(pre + name, tmp.name)
         os.remove(tmp.name)
         json.dump(sorted(_uploaded() | set(ready)), open(UPLOADED, "w"))
+        global LAST_UPLOAD
+        LAST_UPLOAD = time.time()
         return {"sent": len(ready), "mb": round(mb, 1)}
+
+
+LAST_UPLOAD = 0.0
+
+
+def auto_upload_due():
+    """Automatik: genug fertige Würfe oder lange nichts hochgeladen."""
+    if not (AUTO_UPLOAD and (UP_LINK or URL)):
+        return False
+    n = len(pending()[0])
+    return n >= AUTO_MIN or (n > 0 and time.time() - LAST_UPLOAD > 12 * 3600)
 
 
 # ───────────── Darts-Rechner: Modell holen ─────────────
@@ -180,7 +240,8 @@ def local_model():
 
 
 def remote_model():
-    b = Remote().get("models/latest.json")
+    r, pre = model_remote()
+    b = r.get(pre + "latest.json")
     return json.loads(b) if b else None
 
 
@@ -193,7 +254,8 @@ def install_model():
             raise RuntimeError("Kein Modell veröffentlicht")
         os.makedirs(MODEL_DIR, exist_ok=True)
         tmp = os.path.join(MODEL_DIR, "tips.new.onnx")
-        if not Remote().get("models/tips.onnx", tmp):
+        r, pre = model_remote()
+        if not r.get(pre + "tips.onnx", tmp):
             raise RuntimeError("models/tips.onnx fehlt")
         tipnet.TipNet(tmp)   # lässt sich laden? sonst Fehler, altes bleibt
         cur, prev = os.path.join(MODEL_DIR, "tips.onnx"), os.path.join(MODEL_DIR, "tips.prev.onnx")
@@ -223,7 +285,8 @@ def rollback_model():
 def status():
     ready, todo = pending()
     st = {"configured": configured(), "setup": SETUP, "ready": len(ready), "todo": todo,
-          "uploaded": len(_uploaded()), "model": local_model(), "auto": AUTO_MODEL,
+          "uploaded": len(_uploaded()), "model": local_model(), "auto": AUTO_MODEL, "auto_upload": AUTO_UPLOAD,
+          "mode": "Ablage-Link" if UP_LINK else ("Konto" if URL else None),
           "can_rollback": os.path.exists(os.path.join(MODEL_DIR, "tips.prev.onnx"))}
     return st
 

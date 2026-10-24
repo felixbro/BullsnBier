@@ -15,20 +15,29 @@ Darts-Rechner ── Hochladen ──▶ Nextcloud ◀── Herunterladen ─�
 
 ## Darts-Rechner (`config.env`)
 
+**Empfohlen – Freigabelinks (Board sieht nichts, kann nur hochladen bzw. Modell lesen):**
+
+Nextcloud: `BullsnBier-Sync/train` → Teilen › Link › **Dateiablage (nur Hochladen)** + Passwort ·
+`BullsnBier-Sync/models` → Teilen › Link › **Nur lesen** + Passwort
+
 ```ini
-SYNC_URL=https://cloud.example.de/remote.php/dav/files/BENUTZER/BullsnBier-Sync
-SYNC_USER=BENUTZER
-SYNC_PASS=xxxxx-xxxxx-xxxxx-xxxxx-xxxxx
+SYNC_UPLOAD_LINK=https://cloud.example.de/s/AbCdEf
+SYNC_UPLOAD_PASS=geheim1
+SYNC_MODEL_LINK=https://cloud.example.de/s/GhIjKl
+SYNC_MODEL_PASS=geheim2
 SETUP_NAME=Buschi
+SYNC_AUTO_UPLOAD=1         # markierte Würfe selbst hochladen (ab 10 Stück oder alle 12 h, nie während eines Spiels)
 SYNC_AUTO_MODEL=0          # 1 = neues Modell beim Start automatisch installieren
 ```
+
+Alternativ Konto-Zugang (sieht alles): `SYNC_URL` / `SYNC_USER` / `SYNC_PASS` (App-Passwort).
 
 ```bash
 sudo systemctl restart dartcam
 ```
 
 Im Browser: **Kameras › Trainingsdaten**
-- Würfe markieren (korrigierte/unerkannte zuerst) → **Hochladen**
+- Würfe markieren (korrigierte/unerkannte zuerst) → **Hochladen** (oder automatisch)
 - **Neues Modell installieren** · **Altes Modell** (zurück)
 
 ## Trainings-Rechner (Windows)
@@ -42,7 +51,7 @@ git pull
 .\.venv\Scripts\pip install ultralytics onnx onnxslim
 ```
 
-Start: **`BnB-Trainer.bat`** doppelklicken → Cloud-Adresse, Benutzer, App-Passwort, Render-Ordner eintragen.
+Start: **`BnB-Trainer.bat`** doppelklicken → WebDAV-Adresse von `BullsnBier-Sync` (Konto, nur hier!), Benutzer, App-Passwort, Render-Ordner eintragen.
 
 | Knopf | macht |
 |---|---|

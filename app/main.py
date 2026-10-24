@@ -36,10 +36,12 @@ async def lifespan(_app):
         detector = Detector(config.CAMERAS, on_detector_event)
         detector.start()
     mon = asyncio.create_task(monitor())
+    upl = asyncio.create_task(auto_upload())
     warm_speech()
     await emit([])
     yield
     mon.cancel()
+    upl.cancel()
 
 
 app = FastAPI(title="Bulls'n'Bier", lifespan=lifespan)
@@ -350,6 +352,21 @@ async def _on_ev(ev, source="cam"):
         S["last_unknown"] = (ev.get("sid"), time.time())
         await broadcast({"type": "warn", "msg": "Pfeil erkannt, Position unklar – bitte manuell eintragen"})
         await emit([{"k": "unknown"}])
+
+
+async def auto_upload():
+    """Markierte Würfe automatisch hochladen – nur wenn gerade kein Spiel läuft."""
+    while True:
+        await asyncio.sleep(600)
+        g = S.get("game")
+        if g and g.state.get("winner") is None:
+            continue
+        try:
+            if await asyncio.to_thread(sync.auto_upload_due):
+                r = await asyncio.to_thread(sync.upload_training)
+                print(f"Trainingsdaten automatisch hochgeladen: {r['sent']} Würfe, {r['mb']} MB", flush=True)
+        except Exception as e:
+            print(f"Automatischer Upload fehlgeschlagen: {e}", flush=True)
 
 
 async def monitor():
