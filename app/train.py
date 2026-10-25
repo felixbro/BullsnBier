@@ -104,7 +104,7 @@ def stats():
     return {**n, "collect": collecting(), "dir": TRAIN_DIR}
 
 
-def next_todo(after=None):
+def next_todo(after=None, prio=False):
     """Nächster Wurf zum Markieren (neueste zuerst): Autodarts-Abweichungen, dann korrigierte/unklare, dann automatische."""
     ids = list(reversed(_ids()))
     if after in ids:
@@ -114,7 +114,7 @@ def next_todo(after=None):
         st = (read(i) or {}).get("status")
         if st == "review":
             return read(i)
-        rank = {"corrected": 1, "unknown": 1, "auto": 2}.get(st)
+        rank = {"corrected": 1, "unknown": 1, "auto": None if prio else 2}.get(st)
         if rank and rank not in best:
             best[rank] = i
     return read(best[min(best)]) if best else None

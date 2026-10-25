@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#E6E9E9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Bulls’n’Bier · Markieren</title>
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/bnb.css">
+<link rel="stylesheet" href="/static/remote.css">
+<link rel="stylesheet" href="/static/mark.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true">
+  <div class="blob lime" style="left:-30vw; top:-20vh; width:120vw; height:70vh"></div>
+  <div class="blob aqua" style="left:40vw; top:50vh; width:100vw; height:60vh"></div>
+</div>
+<main class="rm mk-page">
+  <header class="rm-head">
+    <a class="rm-brand" href="/remote"><span id="logoMark"></span><b>Markieren</b></a>
+    <span class="rm-status" id="count"></span>
+  </header>
+  <section class="glass rm-card" id="info"></section>
+  <div class="mk-cams" id="cams"></div>
+  <section class="mk-view" id="view">
+    <img id="img" alt="Kamerabild">
+    <div class="mk-x" id="cross"></div>
+    <div class="mk-dot ad hidden" id="dotAd"></div>
+    <div class="mk-dot bnb hidden" id="dotBnb"></div>
+    <div class="mk-lens" id="lens"><i></i></div>
+  </section>
+  <div class="mk-tools">
+    <div class="seg" id="speed"><button data-v="0.2">Fein</button><button data-v="0.5">Mittel</button><button data-v="1">Grob</button></div>
+    <span class="mk-hint">Ziehen = Kreuz langsam bewegen · Tippen = springen</span>
+  </div>
+  <nav class="mk-acts" id="acts"></nav>
+  <div class="rm-foot"><a class="rm-full" href="/remote">Zur Fernbedienung</a><label class="mk-all"><input type="checkbox" id="all"> auch automatisch erkannte</label></div>
+</main>
+<div class="toasts" id="toasts"></div>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/mark.js"></script>
+</body>
+</html>

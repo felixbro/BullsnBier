@@ -100,3 +100,5 @@ $('#logoMark').innerHTML = logo(28);
 api('/api/settings').then(function (c) { CFG = c; applyDisplay(); });
 api('/api/state').then(function (m) { ST = m; render(m); });
 connect();
+function markCount() { api('/api/train').then(function (t) { $('#lnkMark').textContent = 'Pfeile markieren' + (t.review ? ' (' + t.review + ' prüfen)' : ''); }).catch(function () {}); }
+markCount(); setInterval(markCount, 15000);

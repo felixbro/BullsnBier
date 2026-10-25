@@ -510,8 +510,8 @@ def api_train_collect(body: dict):
 
 
 @app.get("/api/train/next")
-def api_train_next(after: str = None):
-    m = train.next_todo(after)
+def api_train_next(after: str = None, prio: int = 0):
+    m = train.next_todo(after, bool(prio))
     if m and detector and m.get("status") == "corrected" and m.get("pos"):   # korrigierte Position → Vorschlag neu
         import numpy as np
         for cid, Hm in detector.H.items():
@@ -932,6 +932,11 @@ async def api_sim_event(kind: str):
 @app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     return {"ok": True}   # für Reverse-Proxy-Healthchecks, auch ohne Zugangsschlüssel erreichbar
+
+
+@app.api_route("/mark", methods=["GET", "HEAD"])
+def mark_page():
+    return FileResponse(os.path.join(STATIC, "mark.html"))
 
 
 @app.api_route("/remote", methods=["GET", "HEAD"])

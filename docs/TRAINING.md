@@ -88,3 +88,10 @@ journalctl -u dartcam -f | grep -i "autodarts\|proxy"
 ```
 
 Optionen in `config.env`: `AD_URL`, `AD_PROXY_DEVS`, `AD_AGREE_MM=4`, `AD_TRUST_SOLO=0`, `AD_MANAGE=1`.
+
+## Markieren am Handy
+
+`http://<darts-pc>:8090/mark` (oder Fernbedienung → **Pfeile markieren**)
+
+- Tippen = Kreuz springt · Ziehen = Kreuz bewegt sich langsam (Fein/Mittel/Grob), Lupe zeigt 5× vergrößert
+- Zuerst kommen nur Würfe zum Prüfen (Autodarts uneinig, nicht erkannt, korrigiert) · Haken „auch automatisch erkannte“ für alle

@@ -1,0 +1,34 @@
+/* Markieren am Handy (/mark) */
+.mk-page{gap:8px;}
+.mk-page .rm-brand{color:inherit; text-decoration:none;}
+.mk-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.mk-top .tag{padding:4px 8px; font-size:var(--fs-micro);}
+.trvs{display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:var(--fs-label);}
+.mkdot{width:12px; height:12px; border-radius:50%; border:2.5px solid; display:inline-block; flex:none;}
+.mkdot.bnb{border-color:#ff4fd8;} .mkdot.ad{border-color:#1fbf63;} .trvs .mkdot.ad{margin-left:10px;}
+.mk-cams{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:6px;}
+.mk-cam{height:38px; border-radius:var(--r-field); border:1px solid var(--glass-line); background:rgba(255,255,255,.6); font:inherit; font-size:var(--fs-label); color:var(--ink);}
+.mk-cam.on{background:#202020; color:var(--lime);}
+.mk-cam.ok::after{content:" ✓";} .mk-cam.no::after{content:" –";}
+.mk-view{position:relative; width:100%; aspect-ratio:16/9; border-radius:var(--r-field); overflow:visible; touch-action:none; -webkit-user-select:none; user-select:none; background:#202020;}
+.mk-view img{display:block; width:100%; height:100%; border-radius:var(--r-field); pointer-events:none; -webkit-user-drag:none;}
+.mk-x{position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; pointer-events:none;}
+.mk-x::before,.mk-x::after{content:""; position:absolute; background:var(--lime); box-shadow:0 0 0 1px #202020;}
+.mk-x::before{left:12px; top:0; width:2px; height:26px;} .mk-x::after{top:12px; left:0; height:2px; width:26px;}
+.mk-dot{position:absolute; width:16px; height:16px; margin:-8px 0 0 -8px; border-radius:50%; border:2.5px solid; pointer-events:none;}
+.mk-dot.ad{border-color:#1fbf63;} .mk-dot.bnb{border-color:#ff4fd8;}
+.mk-lens{position:absolute; width:140px; height:140px; margin:-70px 0 0 -70px; border-radius:50%; border:3px solid #202020; box-shadow:0 6px 24px rgba(0,0,0,.35);
+  background-color:#202020; background-repeat:no-repeat; pointer-events:none; opacity:0; transition:opacity .15s; z-index:3;}
+.mk-lens.on{opacity:1;}
+.mk-lens i::before,.mk-lens i::after{content:""; position:absolute; background:var(--lime); opacity:.9;}
+.mk-lens i::before{left:69px; top:50px; width:2px; height:40px;} .mk-lens i::after{top:69px; left:50px; height:2px; width:40px;}
+.mk-tools{display:flex; flex-direction:column; gap:6px; align-items:stretch;}
+.mk-tools .seg button{height:38px; font-size:var(--fs-label);}
+.mk-hint{font-size:var(--fs-micro); color:var(--ink-2); text-align:center;}
+.mk-acts{display:flex; flex-direction:column; gap:8px;}
+.mk-row{display:grid; grid-template-columns:1fr 1.4fr; gap:8px;}
+.mk-row button{height:52px; font-size:var(--fs-body); display:flex; align-items:center; justify-content:center; gap:8px;}
+.mk-row.small button{height:40px; font-size:var(--fs-label);}
+.mk-row button:disabled{opacity:.4;}
+.mk-all{display:flex; gap:6px; align-items:center; font-size:var(--fs-label); color:var(--ink-2);}
+.hidden{display:none !important;}
