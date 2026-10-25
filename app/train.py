@@ -2,6 +2,7 @@
 
 Ordner DATA/train/<sid>/  →  cam0.jpg, cam1.jpg, … + meta.json
 meta.status:  auto (erkannt, unbestätigt) · ok (Spitze markiert/bestätigt) · corrected (Wert korrigiert) · unknown · skip
+             review (BnB und Autodarts uneinig → in der Markieransicht wählen)
 """
 import json, os, shutil, threading, time
 
@@ -91,27 +92,29 @@ def image_path(sid, cid):
 
 
 def stats():
-    n = {"total": 0, "ok": 0, "todo": 0}
+    n = {"total": 0, "ok": 0, "todo": 0, "review": 0}
     for i in _ids():
         st = (read(i) or {}).get("status")
         n["total"] += 1
         if st == "ok":
             n["ok"] += 1
-        elif st in ("auto", "corrected", "unknown"):
+        elif st in ("auto", "corrected", "unknown", "review"):
             n["todo"] += 1
+            n["review"] += st == "review"
     return {**n, "collect": collecting(), "dir": TRAIN_DIR}
 
 
 def next_todo(after=None):
-    """Nächster Wurf zum Markieren (neueste zuerst; korrigierte/unklare vor den automatischen)."""
+    """Nächster Wurf zum Markieren (neueste zuerst): Autodarts-Abweichungen, dann korrigierte/unklare, dann automatische."""
     ids = list(reversed(_ids()))
     if after in ids:
         ids = ids[ids.index(after) + 1:]
-    best = None
+    best = {}
     for i in ids:
         st = (read(i) or {}).get("status")
-        if st in ("corrected", "unknown"):
+        if st == "review":
             return read(i)
-        if st == "auto" and best is None:
-            best = i
-    return read(best) if best else None
+        rank = {"corrected": 1, "unknown": 1, "auto": 2}.get(st)
+        if rank and rank not in best:
+            best[rank] = i
+    return read(best[min(best)]) if best else None

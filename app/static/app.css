@@ -536,3 +536,8 @@ button.hstatus{cursor:pointer;}
 #camgrid .calside{max-height:800px; overflow-y:auto; scrollbar-width:thin;}
 .trthumb{padding:6px 10px !important; grid-template-columns:96px 1fr !important;} .trthumb img{width:96px !important;}
 .trsync{padding:16px; gap:8px;} .trsync .h{font-size:22px;}
+
+/* Autodarts-Abgleich */
+.cam .mk.bnb{border-color:#ff4fd8;} .cam .mk.ad{border-color:#4fe08a;}
+.trvs{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:var(--fs-ui);} .trvs b{margin-left:2px;}
+.mkdot{width:12px; height:12px; border-radius:50%; border:2px solid; display:inline-block;} .mkdot.bnb{border-color:#ff4fd8;} .mkdot.ad{border-color:#4fe08a; margin-left:10px;}

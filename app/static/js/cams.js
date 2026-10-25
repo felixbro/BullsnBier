@@ -124,40 +124,48 @@ function loadTrain(after) {
     $('#camsMeta').textContent = st.total + ' Würfe gesammelt · ' + st.ok + ' markiert · ' + st.todo + ' offen';
     var head = '<label class="trcollect"><input type="checkbox" id="trCollect"' + (st.collect ? ' checked' : '') + '> Beim Spielen sammeln</label>';
     if (!m || !m.sid) {
-      $('#camgrid').innerHTML = '<div class="glass nocams"><h2 class="h">Nichts zu markieren</h2><p class="lead">Einfach spielen – jeder Wurf landet hier. Korrigierte und nicht erkannte Würfe kommen zuerst.</p>' + head + '</div><div class="glass trsync" id="trSync"></div>';
+      $('#camgrid').innerHTML = '<div class="glass nocams"><h2 class="h">Nichts zu markieren</h2><p class="lead">Einfach spielen – jeder Wurf landet hier. Korrigierte und nicht erkannte Würfe kommen zuerst.</p>' + head + '</div><div class="glass trsync" id="trCoach"></div><div class="glass trsync" id="trSync"></div>';
       $('#trCollect').onchange = function (e) { api('/api/train/collect', 'POST', {on: e.target.checked}); };
-      loadSync();
+      loadSync(); loadCoach();
       return;
     }
     TRS = m; var cams = Object.keys(m.size || {}).sort();
     TRTIPS = {};
-    cams.forEach(function (c) { var t = (m.tips || {})[c]; TRTIPS[c] = t !== undefined ? t : ((m.proposal || {})[c] || (m.cam_tips || {})[c] || null); });
+    var rev = m.status === 'review', AD = m.ad || {}, BN = m.bnb || {};
+    cams.forEach(function (c) { var t = (m.tips || {})[c]; TRTIPS[c] = rev ? null : t !== undefined ? t : ((m.proposal || {})[c] || (m.cam_tips || {})[c] || null); });
     if (cams.indexOf(TRCAM) < 0) TRCAM = cams[0];
-    var label = {auto: 'automatisch erkannt', corrected: 'korrigiert', unknown: 'nicht erkannt', ok: 'markiert'}[m.status] || m.status;
+    var label = {auto: 'automatisch erkannt', corrected: 'korrigiert', unknown: 'nicht erkannt', ok: 'markiert', review: 'Autodarts-Abgleich'}[m.status] || m.status;
+    var revbox = !rev ? '' :
+      '<div class="trvs"><span class="mkdot bnb"></span><b>BnB</b> ' + esc(BN.name || '–') + '<span class="mkdot ad"></span><b>Autodarts</b> ' + esc(AD.name || '–') + '</div>' +
+      '<div class="acts"><button class="btn-cta" id="trAd" type="button"' + (AD.uv && Object.keys(AD.uv).length ? '' : ' disabled') + '>Autodarts stimmt</button>' +
+      '<button class="btn-glass" id="trBnb" type="button"' + (BN.uv && Object.keys(BN.uv).length ? '' : ' disabled') + '>BnB stimmt</button></div>' +
+      '<p class="calhelp">Beide falsch? Spitze im Bild selbst anklicken, dann <b>Passt · weiter</b>.</p>';
     $('#camgrid').innerHTML =
       '<div class="glass cam big"><div class="img"><img src="/api/train/' + m.sid + '/' + TRCAM + '.jpg" alt=""></div></div>' +
       '<div class="calside"><div class="glass campick">' + cams.map(function (c) {
           return '<button type="button" class="cp trthumb' + (c === TRCAM ? ' on' : '') + '" data-c="' + c + '"><img src="/api/train/' + m.sid + '/' + c + '.jpg" alt=""><b>Cam ' + (+c + 1) + '</b>' +
-            '<span class="tag ' + (TRTIPS[c] ? 'ok' : 'bad') + '">' + (TRTIPS[c] ? 'Spitze gesetzt' : 'nicht sichtbar') + '</span></button>'; }).join('') + '</div>' +
+            '<span class="tag ' + (TRTIPS[c] ? 'ok' : rev ? '' : 'bad') + '">' + (TRTIPS[c] ? 'Spitze gesetzt' : rev ? 'offen' : 'nicht sichtbar') + '</span></button>'; }).join('') + '</div>' +
         '<div class="glass calpanel"><div class="calhead"><div><h2 class="h">' + esc(m.name || '?') + '</h2><span class="meta">' + label + (m.detected ? ' · erkannt war ' + esc(m.detected) : '') + '</span></div></div>' +
-          '<p class="calhelp">Gelber Kreis = Spitze des <b>neuen</b> Pfeils (dort, wo er im Board steckt). Liegt er falsch: genau auf die Spitze klicken.</p>' +
+          revbox + (rev ? '' : '<p class="calhelp">Gelber Kreis = Spitze des <b>neuen</b> Pfeils (dort, wo er im Board steckt). Liegt er falsch: genau auf die Spitze klicken.</p>') +
           '<div class="acts"><button class="btn-glass" id="trHide" type="button">Nicht sichtbar</button><button class="btn-cta" id="trOk" type="button">Passt · weiter</button></div>' +
-          '<div class="acts"><button class="btn-glass" id="trSkip" type="button">Überspringen</button><button class="btn-glass" id="trDel" type="button">Löschen</button></div>' +
-          head + '</div><div class="glass trsync" id="trSync"></div></div>';
+          '<div class="acts"><button class="btn-glass" id="trSkip" type="button">' + (rev ? 'Verwerfen' : 'Überspringen') + '</button><button class="btn-glass" id="trDel" type="button">Löschen</button></div>' +
+          head + '</div><div class="glass trsync" id="trCoach"></div><div class="glass trsync" id="trSync"></div></div>';
     var box = $('#camgrid .cam .img'), img = $('img', box);
     attachLens(box, img);
     var mark = function () {
       $$('.mk', box).forEach(function (x) { x.remove(); });
-      var t = TRTIPS[TRCAM]; if (!t || !img.naturalWidth) return;
-      var k = document.createElement('div'); k.className = 'mk';
-      k.style.left = (t[0] / img.naturalWidth * 100) + '%'; k.style.top = (t[1] / img.naturalHeight * 100) + '%'; box.appendChild(k);
+      if (!img.naturalWidth) return;
+      var put = function (t, cls) { if (!t) return; var k = document.createElement('div'); k.className = 'mk' + (cls ? ' ' + cls : '');
+        k.style.left = (t[0] / img.naturalWidth * 100) + '%'; k.style.top = (t[1] / img.naturalHeight * 100) + '%'; box.appendChild(k); };
+      if (rev) { put((BN.uv || {})[TRCAM], 'bnb'); put((AD.uv || {})[TRCAM], 'ad'); }
+      put(TRTIPS[TRCAM]);
     };
     img.onload = function () { box.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight; mark(); };
     var nextCam = function () { var i = cams.indexOf(TRCAM); if (i < cams.length - 1) { TRCAM = cams[i + 1]; redraw(); } };
     var redraw = function () {
       img.src = '/api/train/' + m.sid + '/' + TRCAM + '.jpg';
       $$('#camgrid .trthumb').forEach(function (b) { var c = b.dataset.c; b.classList.toggle('on', c === TRCAM);
-        var tg = $('.tag', b); tg.className = 'tag ' + (TRTIPS[c] ? 'ok' : 'bad'); tg.textContent = TRTIPS[c] ? 'Spitze gesetzt' : 'nicht sichtbar'; });
+        var tg = $('.tag', b); tg.className = 'tag ' + (TRTIPS[c] ? 'ok' : rev ? '' : 'bad'); tg.textContent = TRTIPS[c] ? 'Spitze gesetzt' : rev ? 'offen' : 'nicht sichtbar'; });
     };
     box.onclick = function (e) { var r = img.getBoundingClientRect();
       TRTIPS[TRCAM] = [(e.clientX - r.left) / r.width * img.naturalWidth, (e.clientY - r.top) / r.height * img.naturalHeight];
@@ -165,11 +173,14 @@ function loadTrain(after) {
     $$('#camgrid .trthumb').forEach(function (b) { b.onclick = function () { TRCAM = b.dataset.c; redraw(); }; });
     $('#trHide').onclick = function () { TRTIPS[TRCAM] = null; mark(); redraw(); nextCam(); };
     var done = function (body) { TRCAM = null; api('/api/train/' + m.sid, 'POST', body).then(function () { loadTrain(m.sid); }); };
-    $('#trOk').onclick = function () { done({tips: TRTIPS}); };
+    $('#trOk').onclick = function () {
+      if (rev && !cams.some(function (c) { return TRTIPS[c]; })) return toast('Erst wählen', 'Autodarts, BnB oder Spitze selbst anklicken', 'info');
+      done({tips: TRTIPS}); };
+    if (rev) { $('#trAd').onclick = function () { done({pick: 'ad'}); }; $('#trBnb').onclick = function () { done({pick: 'bnb'}); }; }
     $('#trSkip').onclick = function () { done({skip: true}); };
     $('#trDel').onclick = function () { done({delete: true}); };
     $('#trCollect').onchange = function (e) { api('/api/train/collect', 'POST', {on: e.target.checked}); };
-    loadSync();
+    loadSync(); loadCoach();
   });
 }
 
@@ -198,5 +209,31 @@ function loadSync() {
     $('#syUp').onclick = function () { run(this, '/api/sync/upload', null, function (r) { return r.sent + ' Würfe hochgeladen (' + r.mb + ' MB' + (r.parts > 1 ? ', ' + r.parts + ' Pakete' : '') + ')'; }); };
     $('#syModel').onclick = function () { run(this, '/api/sync/model', null, function (r) { return 'Modell ' + r.version + ' installiert'; }); };
     $('#syBack').onclick = function () { run(this, '/api/sync/model', {rollback: true}, function (r) { return 'Zurück auf Modell ' + (r.version || 'vorher'); }); };
+  });
+}
+
+/* Trainingsmodus mit Autodarts als Lehrer */
+var COACHT = null;
+function loadCoach() {
+  var box = $('#trCoach'); if (!box) return;
+  clearTimeout(COACHT);
+  api('/api/coach').then(function (c) {
+    var s = c.stats || {}, n = (s.agree || 0) + (s.differ || 0) + (s.ad_only || 0) + (s.bnb_only || 0);
+    var last = c.last ? {agree: '✓ einig', differ: '≠ uneinig', ad_only: 'nur Autodarts', bnb_only: 'nur BnB'}[c.last.res] +
+      ' · BnB ' + esc(c.last.bnb || '–') + ' · Autodarts ' + esc(c.last.ad || '–') : '';
+    box.innerHTML = '<h2 class="h">Autodarts-Abgleich</h2>' +
+      '<label class="trcollect"><input type="checkbox" id="coOn"' + (c.on ? ' checked' : '') + '> Trainingsmodus (Kameras an Autodarts weitergeben)</label>' +
+      (c.error ? '<p class="calhelp" style="color:var(--coral)">' + esc(c.error) + '</p>' : '') +
+      (c.on ? '<p class="calhelp">Autodarts: <b>' + (c.autodarts ? 'verbunden' : 'nicht erreichbar') + '</b>' + (c.ad_status ? ' · ' + esc(c.ad_status) : '') + '</p>' : '') +
+      '<p class="calhelp">Umrechnung: ' + (c.fit ? '<b>gelernt</b> (± ' + c.fit_rms + ' mm)' : c.pairs + ' / ' + c.fit_min + ' einige Würfe') +
+        (c.rate != null ? ' · Übereinstimmung <b>' + c.rate + ' %</b> (letzte ' + c.n_rate + ')' : '') + '</p>' +
+      (n ? '<p class="calhelp">' + (s.agree || 0) + ' einig · ' + (s.differ || 0) + ' uneinig · ' + (s.ad_only || 0) + ' nur Autodarts · ' + (s.bnb_only || 0) + ' nur BnB</p>' : '') +
+      (last ? '<p class="calhelp">Zuletzt: ' + last + '</p>' : '');
+    $('#coOn').onchange = function (e) {
+      var on = e.target.checked;
+      api('/api/coach', 'POST', {on: on}).then(function () { toast(on ? 'Trainingsmodus an' : 'Trainingsmodus aus', on ? 'Autodarts bekommt die Kameras' : '', 'ok'); loadCoach(); },
+        function (er) { toast('Trainingsmodus', er && er.detail, 'warn'); loadCoach(); });
+    };
+    if (c.on && $('#trCoach')) COACHT = setTimeout(loadCoach, 3000);
   });
 }

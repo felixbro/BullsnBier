@@ -481,6 +481,7 @@ class Detector(threading.Thread):
         self.paused = False
         self.reset_flag = True
         self.fps = 0.0
+        self.tap = None      # Trainingsmodus: jedes Bild zusätzlich an den Kamera-Proxy (Autodarts)
 
     def reload_cal(self):
         self.H, self.roi = {}, {}
@@ -526,6 +527,8 @@ class Detector(threading.Thread):
                 f = c.read()
                 if f is not None:
                     frames[c.id] = gray(f)
+                    if self.tap:
+                        self.tap(c.id, f)
             if not frames:
                 time.sleep(0.2)
                 continue

@@ -66,3 +66,25 @@ Ohne Oberfläche:
 .\.venv\Scripts\python tools\train_tips.py --resume      # nach Strg+C
 .\.venv\Scripts\python tools\train_tips.py --export      # nur ONNX erzeugen
 ```
+
+## Trainingsmodus mit Autodarts (Linux)
+
+Bulls'n'Bier gibt die Kameras an Autodarts weiter und vergleicht jeden Wurf. Einig → Trainingsbild automatisch markiert. Uneinig → Kameras › Trainingsdaten: **Autodarts stimmt** / **BnB stimmt** / selbst anklicken.
+
+```bash
+cd ~/BullsnBier && git pull
+bash tools/autodarts-setup.sh          # virtuelle Kameras /dev/video10-12, Recht für Autodarts-Dienst
+sudo systemctl restart dartcam
+```
+
+1. Kameras › Trainingsdaten › **Trainingsmodus** an
+2. `http://localhost:3180` → Kameras **BnB Cam 1–3** wählen → in Autodarts kalibrieren (einmalig)
+3. Spielen. Nach ~12 einigen Würfen ist die Umrechnung gelernt (Anzeige „gelernt ± x mm“).
+
+Prüfen:
+```bash
+curl -s http://localhost:3180/api/state | python3 -m json.tool
+journalctl -u dartcam -f | grep -i "autodarts\|proxy"
+```
+
+Optionen in `config.env`: `AD_URL`, `AD_PROXY_DEVS`, `AD_AGREE_MM=4`, `AD_TRUST_SOLO=0`, `AD_MANAGE=1`.

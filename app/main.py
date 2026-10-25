@@ -6,6 +6,7 @@ from fastapi.responses import Response, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config, board, db, settings, tts, avatars, train, sync
+from .coach import coach
 from .games import Game, MODE_NAMES, RULES, finishable
 from .effects import wled, EVENTS
 
@@ -35,6 +36,7 @@ async def lifespan(_app):
         await asyncio.to_thread(init_resolution, config.CAMERAS)
         detector = Detector(config.CAMERAS, on_detector_event)
         detector.start()
+        coach.attach(detector)
     mon = asyncio.create_task(monitor())
     upl = asyncio.create_task(auto_upload())
     warm_speech()
@@ -336,6 +338,8 @@ def on_detector_event(ev):
 
 
 async def _on_ev(ev, source="cam"):
+    if ev["type"] in ("dart", "dart_unknown"):
+        coach.bnb(ev)
     if ev["type"] == "dart":
         # Nur warnen, wenn sich die Kameras wiederholt nicht einig sind (eine abweichende Cam ist normal: verdeckt/schräg)
         bad = ev.get("n", 0) >= 2 and ev.get("agree", 0) < 2 and ev.get("spread", 0) > CAL_WARN_MM
@@ -535,11 +539,35 @@ def api_train_mark(sid: str, body: dict):
     elif body.get("skip"):
         train.update(sid, status="skip")
     else:
-        kw = {"status": "ok", "tips": body.get("tips", {})}
-        if body.get("name"):
-            kw["name"] = body["name"]
+        m = train.read(sid)
+        side = m.get(body.get("pick")) if body.get("pick") in ("ad", "bnb") else None
+        if side:   # Autodarts-Abgleich: „Autodarts stimmt“ / „BnB stimmt“
+            kw = {"status": "ok", "tips": side.get("uv") or {}, "name": side.get("name"), "pos": side.get("pos"), "picked": body["pick"]}
+        else:
+            kw = {"status": "ok", "tips": body.get("tips", {})}
+            if body.get("name"):
+                kw["name"] = body["name"]
         train.update(sid, **kw)
     return train.stats()
+
+
+@app.get("/api/coach")
+def api_coach():
+    return coach.status()
+
+
+@app.post("/api/coach")
+async def api_coach_set(body: dict):
+    try:
+        if body.get("reset_fit"):
+            coach.reset_fit()
+        elif body.get("on"):
+            await asyncio.to_thread(coach.start)
+        elif "on" in body:
+            await asyncio.to_thread(coach.stop)
+    except Exception as e:
+        raise HTTPException(400, str(e))
+    return coach.status()
 
 
 @app.post("/api/dart")
