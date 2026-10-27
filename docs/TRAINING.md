@@ -95,3 +95,11 @@ Optionen in `config.env`: `AD_URL`, `AD_PROXY_DEVS`, `AD_AGREE_MM=4`, `AD_TRUST_
 
 - Tippen = Kreuz springt · Ziehen = Kreuz bewegt sich langsam (Fein/Mittel/Grob), Lupe zeigt 5× vergrößert
 - Zuerst kommen nur Würfe zum Prüfen (Autodarts uneinig, nicht erkannt, korrigiert) · Haken „auch automatisch erkannte“ für alle
+
+## C4D-Szene aus den Kamerabildern (Kameras + Board-Textur)
+
+```bash
+python tools/c4d_scene.py bullsnbier-snapshot.zip          # Snapshot aus der App (Kameras › Snapshot)
+python tools/c4d_scene.py ordner --init klicks.json        # nur Bilder: Startpunkte von Hand
+```
+→ `c4d_szene/c4d_bullsnbier_szene.py` (Textur eingebettet) · `board_textur.jpg` · `calibration.json` · `kontrolle.jpg`
