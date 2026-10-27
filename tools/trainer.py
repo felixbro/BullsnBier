@@ -45,7 +45,7 @@ def best_map(d):
 
 class App:
     def __init__(self, root):
-        self.root, self.cfg, self.q, self.busy = root, load_cfg(), queue.Queue(), False
+        self.root, self.cfg, self.q, self.busy, self.proc = root, load_cfg(), queue.Queue(), False, None
         root.title("Bulls'n'Bier · Trainer")
         root.geometry("860x620")
         f = ttk.Frame(root, padding=14); f.pack(fill="both", expand=True)
@@ -65,6 +65,9 @@ class App:
                      ttk.Button(b, text="3 · Veröffentlichen", command=lambda: self.go(self.publish))]
         for x in self.btns:
             x.pack(side="left", expand=True, fill="x", padx=4, ipady=8)
+        self.stopb = ttk.Button(b, text="Abbrechen", command=self.cancel)
+        self.stopb.pack(side="left", padx=4, ipady=8); self.stopb.state(["disabled"])
+        root.protocol("WM_DELETE_WINDOW", self.close)
         self.info = ttk.Label(f, text=""); self.info.grid(row=len(rows) + 1, column=0, columnspan=3, sticky="w")
         self.log = tk.Text(f, height=20, bg="#202020", fg="#DDF96A", font=("Consolas", 9))
         self.log.grid(row=len(rows) + 2, column=0, columnspan=3, sticky="nsew")
@@ -121,6 +124,25 @@ class App:
                 self.root.after(0, lambda: ([x.state(["!disabled"]) for x in self.btns], self.refresh()))
         threading.Thread(target=work, daemon=True).start()
 
+    def cancel(self):
+        """Laufendes Training samt Unterprozessen beenden."""
+        p = self.proc
+        if not p or p.poll() is not None:
+            return
+        self.say("Abbruch …")
+        if sys.platform.startswith("win"):
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        else:
+            p.terminate()
+
+    def close(self):
+        if self.proc and self.proc.poll() is None:
+            if not messagebox.askyesno("Training läuft", "Training abbrechen und schließen?"):
+                return
+            self.cancel()
+        self.root.destroy()
+
     # ── 1 · Herunterladen ──
     def download(self):
         r = self.remote()
@@ -165,8 +187,9 @@ class App:
                 cmd += ["--app", p]
         self.say("> " + " ".join(cmd[2:]))
         env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env,
-                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        p = self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env,
+                                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        self.root.after(0, lambda: self.stopb.state(["!disabled"]))
         buf = b""
         while True:
             ch = p.stdout.read(1)
@@ -178,7 +201,10 @@ class App:
                 buf = b""
             else:
                 buf += ch
-        if p.wait() != 0:
+        rc = p.wait()
+        self.proc = None
+        self.root.after(0, lambda: self.stopb.state(["disabled"]))
+        if rc != 0:
             raise RuntimeError("Training abgebrochen – siehe Log")
         self.say(f"Training fertig · Genauigkeit {best_map(run_dir())}")
 
