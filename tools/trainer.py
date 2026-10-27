@@ -98,7 +98,7 @@ class App:
         self.root.after(200, self.pump)
 
     def refresh(self):
-        n = sum(len([d for d in os.listdir(p) if os.path.isdir(os.path.join(p, d))]) for p in glob.glob(os.path.join(REAL, "*")) if os.path.isdir(p))
+        n = sum("meta.json" in f for _, _, f in os.walk(REAL)) if os.path.isdir(REAL) else 0
         d = run_dir()
         self.info.config(text=f"Echte Würfe lokal: {n} · letztes Training: Genauigkeit {best_map(d) if d else '–'} · "
                               f"Modell: {'vorhanden' if os.path.exists(MODEL) else 'fehlt'}")
@@ -191,7 +191,7 @@ class App:
         old = json.loads(old) if old else {}
         d = run_dir()
         info = {"version": time.strftime("%Y-%m-%d %H:%M:%S"), "map": best_map(d) if d else None,
-                "real": sum(len(os.listdir(p)) for p in glob.glob(os.path.join(REAL, "*")) if os.path.isdir(p))}
+                "real": sum("meta.json" in f for _, _, f in os.walk(REAL)) if os.path.isdir(REAL) else 0}
         ok = []
         self.root.after(0, lambda: ok.append(messagebox.askyesno(
             "Veröffentlichen?", f"Neu:  Genauigkeit {info['map']} · {info['real']} echte Würfe\n"

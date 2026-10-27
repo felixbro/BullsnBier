@@ -37,11 +37,12 @@ def render_samples(root):
 
 def app_samples(root):
     """Gesammelte echte Würfe der App: nur markierte (status ok). Ältere Pfeile im Bild müssen auch markiert sein."""
-    metas = {}
-    for sid in os.listdir(root):
-        p = os.path.join(root, sid, "meta.json")
-        if os.path.exists(p):
-            metas[sid] = json.load(open(p, encoding="utf-8"))
+    metas, dirs = {}, {}
+    for d, _, files in os.walk(root):   # auch verschachtelt (z. B. per USB kopiert: …/data/train/<sid>/)
+        if "meta.json" in files:
+            sid = os.path.basename(d)
+            metas[sid] = json.load(open(os.path.join(d, "meta.json"), encoding="utf-8"))
+            dirs[sid] = d
     out = []
     for sid, m in metas.items():
         if m.get("status") != "ok":
@@ -50,7 +51,7 @@ def app_samples(root):
         if any(c is None or c.get("status") != "ok" for c in chain):
             continue   # Bild enthält unmarkierte Pfeile → wäre falsches Training
         for cid in m.get("size", {}):
-            img = os.path.join(root, sid, f"cam{cid}.jpg")
+            img = os.path.join(dirs[sid], f"cam{cid}.jpg")
             if os.path.exists(img):
                 tips = [tuple(c["tips"][cid]) for c in chain if c.get("tips", {}).get(cid)]
                 out.append((img, tips, "a" + sid))
